@@ -1,0 +1,63 @@
+run:
+  timeout: '5m'
+  build-tags:
+    - 'all'
+  skip-dirs-use-default: false
+  modules-download-mode: 'readonly'
+  allow-parallel-runners: true
+
+linters:
+  enable:
+    - 'asciicheck'
+    - 'bodyclose'
+    - 'deadcode'
+    - 'depguard'
+    - 'dogsled'
+    - 'errcheck'
+    - 'errorlint'
+    - 'exportloopref'
+    - 'gofmt'
+    - 'gofumpt'
+    - 'goheader'
+    - 'goimports'
+    - 'gomodguard'
+    - 'goprintffuncname'
+    - 'gosec'
+    - 'gosimple'
+    - 'govet'
+    - 'ineffassign'
+    - 'makezero'
+    - 'misspell'
+    - 'noctx'
+    - 'paralleltest'
+    - 'prealloc'
+    - 'predeclared'
+    - 'sqlclosecheck'
+    - 'staticcheck'
+    - 'structcheck'
+    - 'stylecheck'
+    - 'typecheck'
+    - 'unconvert'
+    - 'unused'
+    - 'varcheck'
+    - 'whitespace'
+
+issues:
+  # default: []
+  exclude:
+    - '^S1023:' # staticcheck: redundant returns help with http handlers
+    - '^SA3000:' # staticcheck: not required in Go 11.4+
+    - '^G102:' # gosec: to bind to all ifaces
+    - '^G402:' # gosec: some services terminate at the load balancer
+    - '^G401:' # gosec: use crypto/sha1
+    - '^G505:' # gosec: use crypto/sha1
+    - '^G501:' # gosec: Blocklisted import crypto/md5: weak cryptographic primitive
+    - '^G204:' #gosec: Subprocess launched with a potential tainted input or cmd arguments
+    - '^G108:' # profiling is available
+
+  max-issues-per-linter: 0
+
+  max-same-issues: 0
+
+severity:
+  default-severity: error

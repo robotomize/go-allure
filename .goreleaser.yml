@@ -1,0 +1,43 @@
+before:
+  hooks:
+    - go mod tidy
+builds:
+  - id: golurectl
+    main: ./cmd/golurectl
+    binary: golurectl
+    env:
+      - CGO_ENABLED=0
+      - GO111MODULE=on
+    goos:
+      - freebsd
+      - linux
+      - windows
+      - darwin
+    ldflags:
+      - -s -w -X main.BuildName=golurectl -X main.BuildTag={{.Version}} -extldflags '-static'
+
+archives:
+  - id: golurectl
+    builds:
+      - golurectl
+    name_template: "golurectl{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    replacements:
+      darwin: MacOSX
+      linux: Linux
+      windows: Windows
+      amd64: x86_64
+
+checksum:
+  name_template: 'checksums.txt'
+snapshot:
+  name_template: "{{ .Tag }}"
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+release:
+  github:
+    owner: robotomize
+    name: go-allure
