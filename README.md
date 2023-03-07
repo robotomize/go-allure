@@ -46,16 +46,22 @@ Flags:
 Use "golurectl [command] --help" for more information about a command.
 ```
 
-golurectl with no parameters prints allure reports to stdout
+Example output to stdout
 
 ```shell
 go test -json./...|golurectl
 ```
 
-golurectl output to reports dir
+Example output to reports= dir
 
 ```shell
 go test -json ./...|golurectl -o reports-dir
+```
+
+Example output to report dir with flags
+
+```shell
+go test -json -cover  ./...|golurectl -o reports-dir --gotags integration --allure-suite MySuite --allure-labels epic:my_epic,custom:value --allure-tags UNIT,GO-ALLURE --allure-layers UNIT
 ```
 
 ## Examples
