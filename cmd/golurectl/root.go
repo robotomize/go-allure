@@ -1,8 +1,6 @@
 package main
 
 import (
-	"bufio"
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -11,21 +9,20 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/robotomize/go-allure/internal/slice"
-
 	"github.com/robotomize/go-allure/internal/allure"
-	converter2 "github.com/robotomize/go-allure/internal/converter"
-	"github.com/robotomize/go-allure/internal/gointernal"
+	"github.com/robotomize/go-allure/internal/goallure"
+	"github.com/robotomize/go-allure/internal/slice"
 )
 
 var (
-	verboseFlag      bool
-	outputDirFlag    string
-	goBuildTagsFlag  string
-	allureSuiteFlag  string
-	allureTagsFlag   string
-	allureLayersFlag string
-	allureLabelsFlag string
+	verboseFlag           bool
+	outputDirFlag         string
+	goBuildTagsFlag       string
+	allureSuiteFlag       string
+	allureTagsFlag        string
+	allureLayersFlag      string
+	allureLabelsFlag      string
+	allureAttachmentForce bool
 )
 
 func init() {
@@ -78,6 +75,13 @@ func init() {
 		"",
 		"add allure custom labels to all tests: --allure-labels key:value,key:value1,key1:value",
 	)
+	rootCmd.PersistentFlags().BoolVarP(
+		&allureAttachmentForce,
+		"attachment-force",
+		"a",
+		false,
+		"add test log attachment",
+	)
 }
 
 var rootCmd = &cobra.Command{
@@ -86,7 +90,6 @@ var rootCmd = &cobra.Command{
 	SilenceUsage: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := cmd.Context()
-		const defaultBufCap = 4096
 
 		if outputDirFlag != "" {
 			if err := mkdir(); err != nil {
@@ -94,9 +97,13 @@ var rootCmd = &cobra.Command{
 			}
 		}
 
-		var opts []converter2.Option
+		var opts []goallure.Option
 		if verboseFlag { // nolint
 			// @TODO verbose output
+		}
+
+		if allureAttachmentForce {
+			opts = append(opts, goallure.WithForceAttachment())
 		}
 
 		pwd, err := os.Getwd()
@@ -112,66 +119,23 @@ var rootCmd = &cobra.Command{
 			)
 		}
 
-		modules, err := gointernal.ReadGoModules(ctx, pwd, buildArgs...)
+		converter := goallure.New(pwd, os.Stdin, append(opts, goallure.WithAllureLabels(addFlagLabels()...))...)
+
+		output, err := converter.Output1(ctx)
 		if err != nil {
-			return fmt.Errorf("goallure.ReadGoModules: %w", err)
+			return fmt.Errorf("converter Output1: %w", err)
 		}
 
-		goTestFiles, err := gointernal.ReadGoTestFiles(ctx, modules)
-		if err != nil {
-			return fmt.Errorf("goallure.ReadGoTestFiles: %w", err)
-		}
-
-		converter := converter2.New(goTestFiles, opts...)
-		stdoutOutputBuffer := bytes.NewBuffer(make([]byte, 0, defaultBufCap))
-		jsonInputScanner := bufio.NewScanner(os.Stdin)
-		for jsonInputScanner.Scan() {
-			select {
-			case <-ctx.Done():
-			default:
+		if verboseFlag && output.Err != nil {
+			if _, err := cmd.OutOrStdout().Write([]byte(output.Err.Error())); err != nil {
+				return err
 			}
-
-			line := jsonInputScanner.Bytes()
-
-			var row gointernal.GoTestLogEntry
-			if err := json.Unmarshal(line, &row); err != nil {
-				errorf(cmd, "json.Unmarshal: %v", err)
-			}
-
-			stdoutOutputBuffer.Write([]byte(row.Output))
-
-			converter.Append(row)
-		}
-
-		output := converter.Output()
-		labels := addFlagLabels()
-
-		for idx := range output {
-			output[idx].Labels = append(output[idx].Labels, labels...)
-		}
-
-		goTestOrigScanner := bufio.NewScanner(stdoutOutputBuffer)
-		for goTestOrigScanner.Scan() {
-			if _, err := cmd.OutOrStdout().Write(goTestOrigScanner.Bytes()); err != nil {
-				return fmt.Errorf("command OutOrStdout.Write: %w", err)
-			}
-
-			if _, err = cmd.OutOrStdout().Write([]byte{'\n'}); err != nil {
-				return fmt.Errorf("command OutOrStdout.Write: %w", err)
-			}
-		}
-
-		if _, err = cmd.OutOrStdout().Write([]byte{'\n'}); err != nil {
-			return fmt.Errorf("command OutOrStdout.Write: %w", err)
 		}
 
 		var failed bool
-		for _, tc := range output {
+		for _, tc := range output.Tests {
 			if !failed && (tc.Status == allure.StatusFail || tc.Status == allure.StatusBroken) {
 				failed = true
-			}
-			if err := write(tc); err != nil {
-				return err
 			}
 		}
 
@@ -265,7 +229,7 @@ func errorf(cmd *cobra.Command, message string, args ...any) {
 func write(tc allure.Test) error {
 	dst := os.Stdout
 	if outputDirFlag != "" {
-		reportFile := filepath.Join(outputDirFlag, fmt.Sprintf("%s-result.json", tc.UUID.String()))
+		reportFile := filepath.Join(outputDirFlag, fmt.Sprintf("%s-result.json", tc.UUID))
 
 		file, err := os.OpenFile(reportFile, os.O_CREATE|os.O_RDWR, 0o644)
 		if err != nil {

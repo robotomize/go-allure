@@ -13,8 +13,8 @@ import (
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/robotomize/go-allure/internal/allure"
-	converter2 "github.com/robotomize/go-allure/internal/converter"
-	goallure "github.com/robotomize/go-allure/internal/gointernal"
+	converter2 "github.com/robotomize/go-allure/internal/goallure"
+	goallure "github.com/robotomize/go-allure/internal/goexec"
 )
 
 //go:embed fixtures/test_sample.txt
@@ -30,7 +30,7 @@ func TestConv(t *testing.T) {
 	scanner := bufio.NewScanner(bytes.NewReader(testSample))
 	for scanner.Scan() {
 		line := scanner.Bytes()
-		var row goallure.GoTestLogEntry
+		var row goallure.GoTestEntry
 		if err := json.Unmarshal(line, &row); err != nil {
 			t.Fatalf("json.Unmarshal: %v", err)
 		}

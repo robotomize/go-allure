@@ -1,4 +1,4 @@
-package gointernal
+package goexec
 
 import (
 	"time"
@@ -15,7 +15,7 @@ const (
 	GoTestActionPanic  = "panic"
 )
 
-type GoTestLogEntry struct {
+type GoTestEntry struct {
 	Time     time.Time
 	TestName string `json:"Test"`
 	Action   string
