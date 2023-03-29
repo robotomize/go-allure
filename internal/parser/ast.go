@@ -1,4 +1,4 @@
-package goexec
+package parser
 
 import (
 	"context"
@@ -11,6 +11,8 @@ import (
 	"strings"
 
 	"golang.org/x/sync/errgroup"
+
+	"github.com/robotomize/go-allure/internal/golist"
 )
 
 type GoTestFile struct {
@@ -22,7 +24,7 @@ type GoTestFile struct {
 	GoVersion    string
 }
 
-func ParseTestFiles(ctx context.Context, goListPackages []Package) ([]GoTestFile, error) {
+func ParseTestFiles(ctx context.Context, packages []golist.Package) ([]GoTestFile, error) {
 	var goTestFiles []GoTestFile
 
 	wg, childCtx := errgroup.WithContext(ctx)
@@ -40,10 +42,10 @@ func ParseTestFiles(ctx context.Context, goListPackages []Package) ([]GoTestFile
 	}()
 
 OuterLoop:
-	for _, goListPackage := range goListPackages {
-		goListPackage := goListPackage
+	for _, pkg := range packages {
+		pkg := pkg
 
-		files := append(goListPackage.TestGoFiles, goListPackage.XTestGoFiles...)
+		files := append(pkg.TestGoFiles, pkg.XTestGoFiles...)
 		for _, file := range files {
 			file := file
 
@@ -61,14 +63,14 @@ OuterLoop:
 					default:
 					}
 
-					sourceFilePath := fmt.Sprintf("%s/%s", goListPackage.Dir, file)
-					goTestFiles, err := parseFile(sourceFilePath, goListPackage)
+					pth := fmt.Sprintf("%s/%s", pkg.Dir, file)
+					files, err := parse(pth, pkg)
 					if err != nil {
-						return fmt.Errorf("parseFile: %w", err)
+						return fmt.Errorf("parse: %w", err)
 					}
 
-					for _, goTestFile := range goTestFiles {
-						ch <- goTestFile
+					for _, f := range files {
+						ch <- f
 					}
 
 					return nil
@@ -92,15 +94,15 @@ OuterLoop:
 	return goTestFiles, nil
 }
 
-func parseFile(sourceFilePath string, goListPackage Package) ([]GoTestFile, error) {
-	var goTestFiles []GoTestFile
+func parse(pth string, pkg golist.Package) ([]GoTestFile, error) {
 	fileSet := token.NewFileSet()
 
-	f, err := parser.ParseFile(fileSet, sourceFilePath, nil, 0)
+	f, err := parser.ParseFile(fileSet, pth, nil, 0)
 	if err != nil {
-		return nil, fmt.Errorf("parser.ParseFile: %w", err)
+		return nil, fmt.Errorf("Parser.ParseFile: %w", err)
 	}
 
+	var files []GoTestFile
 	ast.Inspect(
 		f, func(n ast.Node) bool {
 			switch x := n.(type) {
@@ -112,14 +114,14 @@ func parseFile(sourceFilePath string, goListPackage Package) ([]GoTestFile, erro
 				lineNum, _ := strconv.Atoi(fileDetails[1])
 				colNum, _ := strconv.Atoi(fileDetails[2])
 
-				goTestFiles = append(
-					goTestFiles, GoTestFile{
+				files = append(
+					files, GoTestFile{
 						TestName:     x.Name.Name,
-						PackageName:  goListPackage.ImportPath,
+						PackageName:  pkg.ImportPath,
 						FileName:     fileDetails[0],
 						TestFileLine: lineNum,
 						TestFileCol:  colNum,
-						GoVersion:    goListPackage.Module.GoVersion,
+						GoVersion:    pkg.Module.GoVersion,
 					},
 				)
 			}
@@ -128,5 +130,5 @@ func parseFile(sourceFilePath string, goListPackage Package) ([]GoTestFile, erro
 		},
 	)
 
-	return goTestFiles, nil
+	return files, nil
 }

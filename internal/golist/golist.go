@@ -1,4 +1,4 @@
-package goexec
+package golist
 
 import (
 	"bufio"
@@ -6,7 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
+	"io/fs"
 	"os/exec"
 	"path/filepath"
 	"runtime"
@@ -40,44 +40,39 @@ type Module struct {
 	GoVersion string `json:"GoVersion"`
 }
 
-func WalkModules(ctx context.Context, dir string, args ...string) ([]Package, error) {
-	dirs, err := os.ReadDir(dir)
-	if err != nil {
-		return nil, fmt.Errorf("os.ReadDir: %w", err)
-	}
+func DirPackages(ctx context.Context, sfs fs.FS, args ...string) ([]Package, error) {
+	packages := make([]Package, 0)
 
-	modulePackages := make([]Package, 0)
-	for _, entry := range dirs {
-		if strings.HasPrefix(entry.Name(), ".") || strings.HasPrefix(entry.Name(), "..") {
-			continue
-		}
-
-		if entry.IsDir() {
-			packages, err := WalkModules(ctx, filepath.Join(dir, entry.Name()))
-			if err != nil {
-				return nil, fmt.Errorf("WalkModules: %w", err)
+	if err := fs.WalkDir(
+		sfs, ".", func(pth string, entry fs.DirEntry, err error) error {
+			skip := strings.HasPrefix(entry.Name(), ".") || strings.HasPrefix(entry.Name(), "..") || entry.IsDir()
+			if skip {
+				return nil
 			}
 
-			modulePackages = append(modulePackages, packages...)
-		}
+			if entry.Name() == "go.mod" {
+				d, _ := filepath.Split(pth)
+				list, err := listPackages(ctx, d, args...)
+				if err != nil {
+					return fmt.Errorf("listPackages: %w", err)
+				}
 
-		if entry.Name() == "go.mod" {
-			packages, err := ListPackages(ctx, dir, args...)
-			if err != nil {
-				return nil, fmt.Errorf("ListPackages: %w", err)
+				packages = append(packages, list...)
 			}
 
-			modulePackages = append(modulePackages, packages...)
-		}
+			return nil
+		},
+	); err != nil {
+		return nil, fmt.Errorf("fs.WalkDir: %w", err)
 	}
 
-	return modulePackages, nil
+	return packages, nil
 }
 
-func ListPackages(ctx context.Context, dir string, args ...string) ([]Package, error) {
-	names, err := readPackageNames(dir)
+func listPackages(ctx context.Context, dir string, args ...string) ([]Package, error) {
+	names, err := packageNames(dir)
 	if err != nil {
-		return nil, fmt.Errorf("readPackageNames: %w", err)
+		return nil, fmt.Errorf("packageNames: %w", err)
 	}
 
 	goListArgs := append([]string{"list", "-json"}, args...)
@@ -116,7 +111,8 @@ OuterLoop:
 				default:
 				}
 
-				buf := bytes.NewBuffer(make([]byte, 0, 4096))
+				const sampleBufferSize = 4096
+				buf := bytes.NewBuffer(make([]byte, 0, sampleBufferSize))
 				goListCmd := exec.Command("go", append(goListArgs, packageName)...)
 				goListCmd.Stdout = buf
 				goListCmd.Dir = dir
@@ -152,8 +148,8 @@ OuterLoop:
 	return goPackages, nil
 }
 
-func readPackageNames(dir string) ([]string, error) {
-	var packageNames []string
+func packageNames(dir string) ([]string, error) {
+	var names []string
 
 	buf := bytes.NewBuffer(make([]byte, 0, 4096))
 	goListCmd := exec.Command("go", "list", "./...")
@@ -161,13 +157,13 @@ func readPackageNames(dir string) ([]string, error) {
 	goListCmd.Stdout = buf
 	goListCmd.Dir = dir
 	if err := goListCmd.Run(); err != nil {
-		return nil, fmt.Errorf("command Run go list ./...: %w", err)
+		return nil, fmt.Errorf("command Run go list %s/./...: %w", dir, err)
 	}
 
 	scanner := bufio.NewScanner(buf)
 	for scanner.Scan() {
-		packageNames = append(packageNames, scanner.Text())
+		names = append(names, scanner.Text())
 	}
 
-	return packageNames, nil
+	return names, nil
 }

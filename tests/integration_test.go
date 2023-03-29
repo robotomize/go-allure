@@ -4,17 +4,16 @@
 package tests
 
 import (
-	"bufio"
 	"bytes"
+	"context"
 	_ "embed"
-	"encoding/json"
+	"os"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/robotomize/go-allure/internal/allure"
-	converter2 "github.com/robotomize/go-allure/internal/goallure"
-	goallure "github.com/robotomize/go-allure/internal/goexec"
+	"github.com/robotomize/go-allure/internal/exporter"
 )
 
 //go:embed fixtures/test_sample.txt
@@ -26,20 +25,19 @@ func TestConv(t *testing.T) {
 	// TestUnmarshal - fail
 	// TestMarshal - pass
 	// TestConv - pass
-	converter := converter2.New(nil)
-	scanner := bufio.NewScanner(bytes.NewReader(testSample))
-	for scanner.Scan() {
-		line := scanner.Bytes()
-		var row goallure.GoTestEntry
-		if err := json.Unmarshal(line, &row); err != nil {
-			t.Fatalf("json.Unmarshal: %v", err)
-		}
-
-		converter.Append(row)
+	pwd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("os.Getwd: %v", err)
 	}
 
-	output := converter.Output()
-	for _, tc := range output {
+	converter := exporter.New(pwd, bytes.NewReader(testSample))
+
+	output, err := converter.Export(context.Background())
+	if err != nil {
+		t.Fatalf("converter Export: %v", err)
+	}
+
+	for _, tc := range output.Tests {
 		switch tc.Name {
 		case "TestMarshal":
 			if diff := cmp.Diff(allure.StatusPass, tc.Status); diff != "" {

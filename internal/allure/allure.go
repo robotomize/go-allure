@@ -17,7 +17,7 @@ type Test struct {
 	Description string       `json:"description"`
 	Status      string       `json:"status"`
 	Stage       string       `json:"stage"`
-	Steps       []*Step      `json:"steps"`
+	Steps       []Step       `json:"steps"`
 	Start       int64        `json:"start"`
 	Stop        int64        `json:"stop"`
 	FullName    string       `json:"fullName"`
@@ -30,7 +30,7 @@ type Step struct {
 	Name        string       `json:"name"`
 	Status      string       `json:"status"`
 	Stage       string       `json:"stage"`
-	Steps       []*Step      `json:"steps"`
+	Steps       []Step       `json:"steps"`
 	Attachments []Attachment `json:"attachments"`
 	Parameters  []Parameter  `json:"parameters"`
 	Start       int64        `json:"start"`
