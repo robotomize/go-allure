@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-
 	"github.com/robotomize/go-allure/internal/allure"
 	"github.com/robotomize/go-allure/internal/gotest"
 	"github.com/robotomize/go-allure/internal/parser"
@@ -44,7 +43,6 @@ type Option func(options *Options)
 
 type Options struct {
 	forceAttachment bool
-	buildTags       []string
 	allureLabels    []allure.Label
 }
 

@@ -6,14 +6,13 @@ import (
 	"os"
 	"strings"
 
-	"github.com/spf13/cobra"
-
 	"github.com/robotomize/go-allure/internal/allure"
 	"github.com/robotomize/go-allure/internal/exporter"
 	"github.com/robotomize/go-allure/internal/golist"
 	"github.com/robotomize/go-allure/internal/gotest"
 	"github.com/robotomize/go-allure/internal/parser"
 	"github.com/robotomize/go-allure/internal/slice"
+	"github.com/spf13/cobra"
 )
 
 var (
@@ -148,7 +147,7 @@ var rootCmd = &cobra.Command{
 
 		if forwardGoTestLog {
 			if _, err := io.Copy(cmd.OutOrStdout(), result.OutputLog); err != nil {
-				return fmt.Errorf("io.Copy: %w", err)
+				return fmt.Errorf("io.сopy: %w", err)
 			}
 		}
 

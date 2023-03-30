@@ -2,17 +2,15 @@ package gotest
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"sort"
 	"strings"
-)
 
-const (
-	smallBufferSize  = 64
-	mediumBufferSize = 4096
+	"github.com/robotomize/go-allure/internal/slice"
 )
 
 type NestedTest struct {
@@ -65,13 +63,13 @@ func (r *Reader) ReadAll() (Set, error) {
 	}
 
 	result := Set{
-		Err: errors.Join(errs...),
+		Err: errors.Join(errs...), // nolint
 	}
 
 	testCases := make([]NestedTest, 0, len(prefix.Children))
 
 	for _, nod := range prefix.Children {
-		if tc, ok := r.walk(nod, newOutputBuffer(Ptr(make([]string, 0)), "", 0)); ok {
+		if tc, ok := r.walk(nod, newPrefixLog()); ok {
 			testCases = append(testCases, tc)
 		}
 	}
@@ -82,7 +80,7 @@ func (r *Reader) ReadAll() (Set, error) {
 	return result, nil
 }
 
-func (r *Reader) walk(node *prefixNode, offsetBuf *outputBuffer) (NestedTest, bool) {
+func (r *Reader) walk(node *prefixNode, prefix *prefixLog) (NestedTest, bool) {
 	var testCase NestedTest
 
 	if node == nil {
@@ -103,28 +101,41 @@ func (r *Reader) walk(node *prefixNode, offsetBuf *outputBuffer) (NestedTest, bo
 	output := testCase.Value.Output
 	for idx := range output {
 		if isResultActionRow(output[idx]) {
-			output[idx] = offsetBuf.prefix + output[idx]
+			output[idx] = prefix.prefix + output[idx]
 		}
+		prefix.buf.WriteString(output[idx])
 	}
-
-	*offsetBuf.rows = append(*offsetBuf.rows, output...)
 
 	testCase.Value.Output = testCase.Value.Output[:0]
 
-	offsetBuf.incrPrefix()
-	defer offsetBuf.decrPrefix()
+	prefix.incrPrefix()
+	defer prefix.decrPrefix()
 
 	for _, nod := range node.Children {
-		res1 := newOutputBuffer(offsetBuf.rows, offsetBuf.prefix, len(*offsetBuf.rows))
-		res1.prefix = offsetBuf.prefix
-		offsetBuf.next = res1
-
-		if child, ok := r.walk(nod, res1); ok {
+		if child, ok := r.walk(nod, prefix.copy()); ok {
 			testCase.Children = append(testCase.Children, child)
 		}
 	}
 
-	copied := append([]string{}, (*offsetBuf.rows)[offsetBuf.offset:]...)
+	reader := bytes.NewReader(prefix.buf.Bytes())
+	if _, err := reader.Seek(int64(prefix.pos), io.SeekCurrent); err != nil {
+		return NestedTest{}, false
+	}
+
+	all, err := io.ReadAll(reader)
+	if err != nil {
+		return NestedTest{}, false
+	}
+
+	copied := slice.Map(
+		bytes.Split(all, []byte{'\n'}), func(t []byte) string {
+			return string(t) + "\n"
+		},
+	)
+
+	lastIdx := len(copied) - 1
+	copied[lastIdx] = strings.TrimSuffix(copied[lastIdx], "\n")
+
 	mark := make([]string, 0)
 
 	mx := 1<<32 - 1
@@ -146,32 +157,38 @@ func (r *Reader) walk(node *prefixNode, offsetBuf *outputBuffer) (NestedTest, bo
 		},
 	)
 
+	log := make([]byte, 0, len(copied)+len(mark))
 	for _, row := range append(copied, mark...) {
-		testCase.Log = append(testCase.Log, []byte(strings.Replace(row, "\t", "", mx))...)
+		log = append(log, []byte(strings.Replace(row, "\t", "", mx))...)
 	}
+
+	testCase.Log = append(log, '\n')
 
 	return testCase, true
 }
 
-func newOutputBuffer(rows *[]string, prefix string, offset int) *outputBuffer {
-	return &outputBuffer{rows: rows, prefix: prefix, offset: offset}
+func newPrefixLog() *prefixLog {
+	return &prefixLog{buf: bytes.NewBuffer(make([]byte, 0, 64))}
 }
 
-type outputBuffer struct {
+type prefixLog struct {
 	prefix string
-	rows   *[]string
-	offset int
-	next   *outputBuffer
+	buf    *bytes.Buffer
+	pos    int
 }
 
-func (r *outputBuffer) incrPrefix() {
+func (r *prefixLog) copy() *prefixLog {
+	r1 := newPrefixLog()
+	r1.buf = r.buf
+	r1.prefix = r.prefix
+	r1.pos = r.buf.Len()
+	return r1
+}
+
+func (r *prefixLog) incrPrefix() {
 	r.prefix += "\t"
 }
 
-func (r *outputBuffer) decrPrefix() {
+func (r *prefixLog) decrPrefix() {
 	r.prefix = strings.TrimSuffix(r.prefix, "\t")
-}
-
-func Ptr[T any](p T) *T {
-	return &p
 }

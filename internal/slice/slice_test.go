@@ -41,17 +41,6 @@ func TestMap(t *testing.T) {
 		t.Run(
 			tc.name, func(t *testing.T) {
 				t.Parallel()
-				t.Run(
-					"test", func(t *testing.T) {
-						t.Parallel()
-						t.Run(
-							"test1", func(t *testing.T) {
-								t.Parallel()
-								t.Error()
-							},
-						)
-					},
-				)
 				converted := Map(tc.input, tc.f)
 				if !reflect.DeepEqual(converted, tc.expected) {
 					t.Errorf("got: %v, want: %v", converted, tc.expected)

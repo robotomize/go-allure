@@ -10,9 +10,8 @@ import (
 	"strconv"
 	"strings"
 
-	"golang.org/x/sync/errgroup"
-
 	"github.com/robotomize/go-allure/internal/golist"
+	"golang.org/x/sync/errgroup"
 )
 
 type GoTestFile struct {

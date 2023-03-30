@@ -19,7 +19,7 @@ test:
 
 .PHONY: test
 test-cover:
-	@go test -race -v ./... -coverprofile=coverage.out
+	@go test -race -v -tags=all ./... -coverprofile=coverage.out
 
 .PHONY: lint
 lint:
