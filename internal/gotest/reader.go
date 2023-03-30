@@ -138,7 +138,7 @@ func (r *Reader) walk(node *prefixNode, prefix *prefixLog) (NestedTest, bool) {
 
 	mark := make([]string, 0)
 
-	mx := 1<<32 - 1
+	mx := 1<<31 - 1
 	for i := len(copied) - 1; i >= 0; i-- {
 		if isResultActionRow(copied[i]) {
 			cnt := strings.Count(copied[i], "\t")
