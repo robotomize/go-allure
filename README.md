@@ -64,7 +64,7 @@ go test -json ./...|golurectl -o reports-dir
 Example output to report dir with flags
 
 ```shell
-go test -json -cover  ./...|golurectl -o reports-dir --gotags integration --allure-suite MySuite --allure-labels epic:my_epic,custom:value --allure-tags UNIT,GO-ALLURE --allure-layers UNIT
+go test -json -cover  ./...|golurectl -l -e -o reports-dir --gotags integration --allure-suite MySuite --allure-labels epic:my_epic,custom:value --allure-tags UNIT,GO-ALLURE --allure-layers UNIT
 ```
 
 ## Examples
