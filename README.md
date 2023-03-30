@@ -22,7 +22,7 @@ docker pull robotomize/golurectl:latest
 ## Usage
 
 ```sh
-Convert go test output to allure reports
+Export go test output to allure reports
 
 Usage:
   golurectl [flags]
@@ -38,10 +38,13 @@ Flags:
       --allure-layers string   add allure layers to all tests: --allure-layers UNIT,FUNCTIONAL
       --allure-suite string    add allure suite to all tests: --allure-suite MyFirstSuite
       --allure-tags string     add allure tags to all tests: --allure-tags UNIT,ACCEPTANCE
+  -a, --attachment-force       add a log of pass and failed tests to the attachments
+  -e, --forward-exit           forward the origin go test exit code
+  -l, --forward-log            output the origin go test
       --gotags string          pass custom build tags: --gotags integration,fixture,linux
   -h, --help                   help for golurectl
   -o, --output string          output path to allure reports: -o <report-path>
-  -v, --verbose                more verbose: -v
+  -v, --verbose                verbose
 
 Use "golurectl [command] --help" for more information about a command.
 ```

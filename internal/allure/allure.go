@@ -1,9 +1,5 @@
 package allure
 
-import (
-	"github.com/google/uuid"
-)
-
 const StageFinished = "finished"
 
 const (
@@ -14,14 +10,14 @@ const (
 )
 
 type Test struct {
-	UUID        uuid.UUID    `json:"uuid"`
+	UUID        string       `json:"uuid"`
 	TestCaseID  string       `json:"testCaseId"`
 	HistoryID   string       `json:"historyId"`
 	Name        string       `json:"name"`
 	Description string       `json:"description"`
 	Status      string       `json:"status"`
 	Stage       string       `json:"stage"`
-	Steps       []*Step      `json:"steps"`
+	Steps       []Step       `json:"steps"`
 	Start       int64        `json:"start"`
 	Stop        int64        `json:"stop"`
 	FullName    string       `json:"fullName"`
@@ -34,7 +30,7 @@ type Step struct {
 	Name        string       `json:"name"`
 	Status      string       `json:"status"`
 	Stage       string       `json:"stage"`
-	Steps       []*Step      `json:"steps"`
+	Steps       []Step       `json:"steps"`
 	Attachments []Attachment `json:"attachments"`
 	Parameters  []Parameter  `json:"parameters"`
 	Start       int64        `json:"start"`

@@ -1,31 +1,31 @@
 package main
 
 import (
-	"bufio"
-	"bytes"
-	"encoding/json"
 	"fmt"
+	"io"
 	"os"
-	"path/filepath"
 	"strings"
 
-	"github.com/spf13/cobra"
-
-	"github.com/robotomize/go-allure/internal/slice"
-
 	"github.com/robotomize/go-allure/internal/allure"
-	converter2 "github.com/robotomize/go-allure/internal/converter"
-	"github.com/robotomize/go-allure/internal/gointernal"
+	"github.com/robotomize/go-allure/internal/exporter"
+	"github.com/robotomize/go-allure/internal/golist"
+	"github.com/robotomize/go-allure/internal/gotest"
+	"github.com/robotomize/go-allure/internal/parser"
+	"github.com/robotomize/go-allure/internal/slice"
+	"github.com/spf13/cobra"
 )
 
 var (
-	verboseFlag      bool
-	outputDirFlag    string
-	goBuildTagsFlag  string
-	allureSuiteFlag  string
-	allureTagsFlag   string
-	allureLayersFlag string
-	allureLabelsFlag string
+	verboseFlag           bool
+	outputDirFlag         string
+	forwardGoTestExitCode bool
+	forwardGoTestLog      bool
+	goBuildTagsFlag       string
+	allureSuiteFlag       string
+	allureTagsFlag        string
+	allureLayersFlag      string
+	allureLabelsFlag      string
+	allureAttachmentForce bool
 )
 
 func init() {
@@ -34,7 +34,7 @@ func init() {
 		"verbose",
 		"v",
 		false,
-		"more verbose: -v",
+		"verbose",
 	)
 	rootCmd.PersistentFlags().StringVarP(
 		&outputDirFlag,
@@ -42,6 +42,20 @@ func init() {
 		"o",
 		"",
 		"output path to allure reports: -o <report-path>",
+	)
+	rootCmd.PersistentFlags().BoolVarP(
+		&forwardGoTestExitCode,
+		"forward-exit",
+		"e",
+		false,
+		"forward the origin go test exit code",
+	)
+	rootCmd.PersistentFlags().BoolVarP(
+		&forwardGoTestLog,
+		"forward-log",
+		"l",
+		false,
+		"output the origin go test",
 	)
 	rootCmd.PersistentFlags().StringVarP(
 		&goBuildTagsFlag,
@@ -78,25 +92,28 @@ func init() {
 		"",
 		"add allure custom labels to all tests: --allure-labels key:value,key:value1,key1:value",
 	)
+	rootCmd.PersistentFlags().BoolVarP(
+		&allureAttachmentForce,
+		"attachment-force",
+		"a",
+		false,
+		"add a log of pass and failed tests to the attachments",
+	)
 }
 
 var rootCmd = &cobra.Command{
 	Use:          "golurectl",
-	Long:         "Convert go test output to allure reports",
+	Long:         "Export go test output to allure reports",
 	SilenceUsage: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := cmd.Context()
-		const defaultBufCap = 4096
 
-		if outputDirFlag != "" {
-			if err := mkdir(); err != nil {
-				return err
-			}
+		opts := []exporter.Option{
+			exporter.WithAllureLabels(processAllureLabels()...),
 		}
 
-		var opts []converter2.Option
-		if verboseFlag { // nolint
-			// @TODO verbose output
+		if allureAttachmentForce {
+			opts = append(opts, exporter.WithForceAttachment())
 		}
 
 		pwd, err := os.Getwd()
@@ -104,86 +121,69 @@ var rootCmd = &cobra.Command{
 			return fmt.Errorf("os.Getwd: %w", err)
 		}
 
-		buildArgs := make([]string, 0)
+		var buildArgs []string
 		if goBuildTagsFlag != "" {
-			buildArgs = append(
-				buildArgs,
-				append(append(buildArgs, "-tags"), strings.Split(strings.TrimSpace(goBuildTagsFlag), ",")...)...,
-			)
+			buildArgs = append([]string{"-tags"}, strings.Split(strings.TrimSpace(goBuildTagsFlag), ",")...)
 		}
 
-		modules, err := gointernal.ReadGoModules(ctx, pwd, buildArgs...)
+		r := gotest.NewReader(os.Stdin)
+		p := parser.New(golist.NewRetriever(os.DirFS(pwd), buildArgs...))
+
+		e := exporter.New(p, r, opts...)
+		if err := e.Read(ctx); err != nil {
+			return fmt.Errorf("exporter Read: %w", err)
+		}
+
+		result, err := e.Export()
 		if err != nil {
-			return fmt.Errorf("goallure.ReadGoModules: %w", err)
+			return fmt.Errorf("exporter Export: %w", err)
 		}
 
-		goTestFiles, err := gointernal.ReadGoTestFiles(ctx, modules)
-		if err != nil {
-			return fmt.Errorf("goallure.ReadGoTestFiles: %w", err)
-		}
-
-		converter := converter2.New(goTestFiles, opts...)
-		stdoutOutputBuffer := bytes.NewBuffer(make([]byte, 0, defaultBufCap))
-		jsonInputScanner := bufio.NewScanner(os.Stdin)
-		for jsonInputScanner.Scan() {
-			select {
-			case <-ctx.Done():
-			default:
-			}
-
-			line := jsonInputScanner.Bytes()
-
-			var row gointernal.GoTestLogEntry
-			if err := json.Unmarshal(line, &row); err != nil {
-				errorf(cmd, "json.Unmarshal: %v", err)
-			}
-
-			stdoutOutputBuffer.Write([]byte(row.Output))
-
-			converter.Append(row)
-		}
-
-		output := converter.Output()
-		labels := addFlagLabels()
-
-		for idx := range output {
-			output[idx].Labels = append(output[idx].Labels, labels...)
-		}
-
-		goTestOrigScanner := bufio.NewScanner(stdoutOutputBuffer)
-		for goTestOrigScanner.Scan() {
-			if _, err := cmd.OutOrStdout().Write(goTestOrigScanner.Bytes()); err != nil {
-				return fmt.Errorf("command OutOrStdout.Write: %w", err)
-			}
-
-			if _, err = cmd.OutOrStdout().Write([]byte{'\n'}); err != nil {
-				return fmt.Errorf("command OutOrStdout.Write: %w", err)
-			}
-		}
-
-		if _, err = cmd.OutOrStdout().Write([]byte{'\n'}); err != nil {
-			return fmt.Errorf("command OutOrStdout.Write: %w", err)
-		}
-
-		var failed bool
-		for _, tc := range output {
-			if !failed && (tc.Status == allure.StatusFail || tc.Status == allure.StatusBroken) {
-				failed = true
-			}
-			if err := write(tc); err != nil {
+		if verboseFlag && result.Err != nil {
+			if _, err := cmd.OutOrStdout().Write([]byte(result.Err.Error())); err != nil {
 				return err
 			}
 		}
 
-		if failed {
-			os.Exit(1)
+		if forwardGoTestLog {
+			if _, err := io.Copy(cmd.OutOrStdout(), result.OutputLog); err != nil {
+				return fmt.Errorf("io.сopy: %w", err)
+			}
+		}
+
+		if forwardGoTestExitCode {
+			var failed bool
+			for _, tc := range result.Tests {
+				if !failed && (tc.Status == allure.StatusFail || tc.Status == allure.StatusBroken) {
+					failed = true
+				}
+			}
+
+			if failed {
+				os.Exit(1)
+			}
+		}
+
+		var outOpts []exporter.WriterOption
+		if outputDirFlag != "" {
+			outOpts = append(outOpts, exporter.WithOutputPth(outputDirFlag))
+		}
+
+		writer := exporter.NewWriter(outOpts...)
+
+		if err := writer.WriteReport(ctx, result.Tests); err != nil {
+			return fmt.Errorf("exporter.NewWriter WriteReport: %w", err)
+		}
+
+		if err := writer.WriteAttachments(ctx, result.Attachments); err != nil {
+			return fmt.Errorf("exporter.NewWriter WriteAttachments: %w", err)
 		}
 
 		return nil
 	},
 }
 
-func addFlagLabels() []allure.Label {
+func processAllureLabels() []allure.Label {
 	var labels []allure.Label
 	if len(allureSuiteFlag) > 0 {
 		labels = append(
@@ -254,41 +254,4 @@ func addFlagLabels() []allure.Label {
 	}
 
 	return labels
-}
-
-func errorf(cmd *cobra.Command, message string, args ...any) {
-	if verboseFlag {
-		_, _ = fmt.Fprintf(cmd.OutOrStdout(), message, args...)
-	}
-}
-
-func write(tc allure.Test) error {
-	dst := os.Stdout
-	if outputDirFlag != "" {
-		reportFile := filepath.Join(outputDirFlag, fmt.Sprintf("%s-result.json", tc.UUID.String()))
-
-		file, err := os.OpenFile(reportFile, os.O_CREATE|os.O_RDWR, 0o644)
-		if err != nil {
-			return fmt.Errorf("os.OpenFile: %w", err)
-		}
-
-		defer file.Close()
-		dst = file
-	}
-
-	if err := json.NewEncoder(dst).Encode(tc); err != nil {
-		return fmt.Errorf("json.NewEncoder.Encode: %w", err)
-	}
-
-	return nil
-}
-
-func mkdir() error {
-	if _, err := os.Stat(outputDirFlag); os.IsNotExist(err) {
-		if err = os.MkdirAll(outputDirFlag, os.ModePerm); err != nil {
-			return fmt.Errorf("os.MkdirAll: %w", err)
-		}
-	}
-
-	return nil
 }

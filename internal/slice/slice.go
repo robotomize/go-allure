@@ -35,3 +35,12 @@ func Find[T any](list []T, f func(t T) bool) (T, bool) {
 
 	return found, false
 }
+
+func Flat[T any](list [][]T) []T {
+	t := make([]T, 0, len(list))
+	for idx := range list {
+		t = append(t, list[idx]...)
+	}
+
+	return t
+}
