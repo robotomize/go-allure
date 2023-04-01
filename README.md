@@ -1,5 +1,6 @@
 # ⚡ Go-allure
 
+[![Go Report](https://goreportcard.com/badge/github.com/robotomize/go-allure)](https://goreportcard.com/report/github.com/robotomize/go-allure)
 [![Build status](https://github.com/robotomize/go-allure/actions/workflows/release.yml/badge.svg)](https://github.com/robotomize/go-allure/actions)
 [![GitHub license](https://img.shields.io/github/license/robotomize/go-allure.svg)](https://github.com/robotomize/go-allure/blob/main/LICENSE)
 
