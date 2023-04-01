@@ -1,8 +1,11 @@
 # ⚡ Go-allure
 
 [![Go Report](https://goreportcard.com/badge/github.com/robotomize/go-allure)](https://goreportcard.com/report/github.com/robotomize/go-allure)
+[![codebeat badge](https://codebeat.co/badges/dff72628-75b8-4809-a93d-cbcbc16e5c06)](https://codebeat.co/projects/github-com-robotomize-go-allure-main)
+[![codecov](https://codecov.io/gh/robotomize/go-allure/branch/main/graph/badge.svg)](https://codecov.io/gh/robotomize/go-allure)
 [![Build status](https://github.com/robotomize/go-allure/actions/workflows/release.yml/badge.svg)](https://github.com/robotomize/go-allure/actions)
 [![GitHub license](https://img.shields.io/github/license/robotomize/go-allure.svg)](https://github.com/robotomize/go-allure/blob/main/LICENSE)
+
 
 A command line utility for converting the output of Go tests into [allure reports](https://github.com/allure-framework).
 
