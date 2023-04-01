@@ -33,7 +33,6 @@ func TestReader_ReadAll(t *testing.T) {
 			name:  "test_full_marshal_pass",
 			input: strings.NewReader(positiveFullMarshal),
 			expected: NestedTest{
-
 				Value: Test{
 					Name:    "TestFilter",
 					Package: "github.com/robotomize/go-allure/internal/slice",
@@ -75,7 +74,6 @@ func TestReader_ReadAll(t *testing.T) {
 			name:  "test_full_marshal_fail",
 			input: strings.NewReader(negativeFullMarshal),
 			expected: NestedTest{
-
 				Value: Test{
 					Name:    "TestFilter",
 					Package: "github.com/robotomize/go-allure/internal/slice",
