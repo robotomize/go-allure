@@ -6,13 +6,14 @@ import (
 	"os"
 	"strings"
 
+	"github.com/spf13/cobra"
+
 	"github.com/robotomize/go-allure/internal/allure"
 	"github.com/robotomize/go-allure/internal/exporter"
 	"github.com/robotomize/go-allure/internal/golist"
 	"github.com/robotomize/go-allure/internal/gotest"
 	"github.com/robotomize/go-allure/internal/parser"
 	"github.com/robotomize/go-allure/internal/slice"
-	"github.com/spf13/cobra"
 )
 
 var (
@@ -26,6 +27,7 @@ var (
 	allureLayersFlag      string
 	allureLabelsFlag      string
 	allureAttachmentForce bool
+	silentOutput          bool
 )
 
 func init() {
@@ -99,6 +101,13 @@ func init() {
 		false,
 		"add a log of pass and failed tests to the attachments",
 	)
+	rootCmd.PersistentFlags().BoolVarP(
+		&silentOutput,
+		"silent",
+		"s",
+		false,
+		"silent report output",
+	)
 }
 
 var rootCmd = &cobra.Command{
@@ -169,7 +178,12 @@ var rootCmd = &cobra.Command{
 			outOpts = append(outOpts, exporter.WithOutputPth(outputDirFlag))
 		}
 
-		writer := exporter.NewWriter(outOpts...)
+		outputWriter := io.Writer(os.Stdout)
+		if silentOutput {
+			outputWriter = io.Discard
+		}
+
+		writer := exporter.NewWriter(outputWriter, outOpts...)
 
 		if err := writer.WriteReport(ctx, result.Tests); err != nil {
 			return fmt.Errorf("exporter.NewWriter WriteReport: %w", err)

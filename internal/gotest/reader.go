@@ -3,6 +3,7 @@ package gotest
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -32,12 +33,18 @@ type Reader struct {
 	r *bufio.Scanner
 }
 
-func (r *Reader) ReadAll() (Set, error) {
+func (r *Reader) ReadAll(ctx context.Context) (Set, error) {
 	var errs []error
 
 	prefix := &prefixNode{}
 
 	for r.r.Scan() {
+		select {
+		case <-ctx.Done():
+			return Set{}, ctx.Err()
+		default:
+		}
+
 		line := r.r.Bytes()
 
 		var row Entry

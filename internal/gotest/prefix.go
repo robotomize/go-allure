@@ -16,16 +16,16 @@ func (t *prefixNode) find(key string) (*Test, bool) {
 			return n.Value, true
 		}
 
-		if strings.HasPrefix(key, n.Key) {
-			if strings.Count(key, "/") != strings.Count(n.Key, "/") {
-				return n.find(key)
-			}
-
-			return n.Value, true
+		if t.isSubTest(key, n.Key) {
+			return n.find(key)
 		}
 	}
 
 	return nil, false
+}
+
+func (t *prefixNode) isSubTest(key, nodeKey string) bool {
+	return strings.HasPrefix(key, nodeKey) && strings.Count(key, "/") != strings.Count(nodeKey, "/")
 }
 
 func (t *prefixNode) insert(obj *Test) {
@@ -68,6 +68,9 @@ func (t *prefixNode) isChildExist(obj *Test, key string) bool {
 		}
 
 		if t.prefixIdxKey(obj.Package, obj.Name) != n.Key && strings.HasPrefix(key, n.Key) {
+			if strings.Count(key, "/") == strings.Count(n.Key, "/") {
+				continue
+			}
 			n.insert(obj)
 			return true
 		}

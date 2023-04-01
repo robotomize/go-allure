@@ -1,0 +1,45 @@
+{"Time":"2023-04-01T17:21:28.93301987+03:00","Action":"start","Package":"github.com/robotomize/go-allure/internal/slice"}
+{"Time":"2023-04-01T17:21:28.934438803+03:00","Action":"run","Package":"github.com/robotomize/go-allure/internal/slice","Test":"TestFilter"}
+{"Time":"2023-04-01T17:21:28.934470988+03:00","Action":"output","Package":"github.com/robotomize/go-allure/internal/slice","Test":"TestFilter","Output":"=== RUN   TestFilter\n"}
+{"Time":"2023-04-01T17:21:28.934507541+03:00","Action":"output","Package":"github.com/robotomize/go-allure/internal/slice","Test":"TestFilter","Output":"=== PAUSE TestFilter\n"}
+{"Time":"2023-04-01T17:21:28.934512432+03:00","Action":"pause","Package":"github.com/robotomize/go-allure/internal/slice","Test":"TestFilter"}
+{"Time":"2023-04-01T17:21:28.934518376+03:00","Action":"cont","Package":"github.com/robotomize/go-allure/internal/slice","Test":"TestFilter"}
+{"Time":"2023-04-01T17:21:28.934522634+03:00","Action":"output","Package":"github.com/robotomize/go-allure/internal/slice","Test":"TestFilter","Output":"=== CONT  TestFilter\n"}
+{"Time":"2023-04-01T17:21:28.934529669+03:00","Action":"run","Package":"github.com/robotomize/go-allure/internal/slice","Test":"TestFilter/test_filtered"}
+{"Time":"2023-04-01T17:21:28.934534383+03:00","Action":"output","Package":"github.com/robotomize/go-allure/internal/slice","Test":"TestFilter/test_filtered","Output":"=== RUN   TestFilter/test_filtered\n"}
+{"Time":"2023-04-01T17:21:28.934540715+03:00","Action":"output","Package":"github.com/robotomize/go-allure/internal/slice","Test":"TestFilter/test_filtered","Output":"=== PAUSE TestFilter/test_filtered\n"}
+{"Time":"2023-04-01T17:21:28.934544717+03:00","Action":"pause","Package":"github.com/robotomize/go-allure/internal/slice","Test":"TestFilter/test_filtered"}
+{"Time":"2023-04-01T17:21:28.93454916+03:00","Action":"run","Package":"github.com/robotomize/go-allure/internal/slice","Test":"TestFilter/test_filtered_empty"}
+{"Time":"2023-04-01T17:21:28.934552903+03:00","Action":"output","Package":"github.com/robotomize/go-allure/internal/slice","Test":"TestFilter/test_filtered_empty","Output":"=== RUN   TestFilter/test_filtered_empty\n"}
+{"Time":"2023-04-01T17:21:28.934558315+03:00","Action":"output","Package":"github.com/robotomize/go-allure/internal/slice","Test":"TestFilter/test_filtered_empty","Output":"=== PAUSE TestFilter/test_filtered_empty\n"}
+{"Time":"2023-04-01T17:21:28.934562445+03:00","Action":"pause","Package":"github.com/robotomize/go-allure/internal/slice","Test":"TestFilter/test_filtered_empty"}
+{"Time":"2023-04-01T17:21:28.934569752+03:00","Action":"run","Package":"github.com/robotomize/go-allure/internal/slice","Test":"TestFilter/test_nil_input"}
+{"Time":"2023-04-01T17:21:28.93457496+03:00","Action":"output","Package":"github.com/robotomize/go-allure/internal/slice","Test":"TestFilter/test_nil_input","Output":"=== RUN   TestFilter/test_nil_input\n"}
+{"Time":"2023-04-01T17:21:28.934584099+03:00","Action":"output","Package":"github.com/robotomize/go-allure/internal/slice","Test":"TestFilter/test_nil_input","Output":"=== PAUSE TestFilter/test_nil_input\n"}
+{"Time":"2023-04-01T17:21:28.934589721+03:00","Action":"pause","Package":"github.com/robotomize/go-allure/internal/slice","Test":"TestFilter/test_nil_input"}
+{"Time":"2023-04-01T17:21:28.93459681+03:00","Action":"run","Package":"github.com/robotomize/go-allure/internal/slice","Test":"TestFilter/test_empty_input"}
+{"Time":"2023-04-01T17:21:28.934603334+03:00","Action":"output","Package":"github.com/robotomize/go-allure/internal/slice","Test":"TestFilter/test_empty_input","Output":"=== RUN   TestFilter/test_empty_input\n"}
+{"Time":"2023-04-01T17:21:28.93460852+03:00","Action":"output","Package":"github.com/robotomize/go-allure/internal/slice","Test":"TestFilter/test_empty_input","Output":"=== PAUSE TestFilter/test_empty_input\n"}
+{"Time":"2023-04-01T17:21:28.934612631+03:00","Action":"pause","Package":"github.com/robotomize/go-allure/internal/slice","Test":"TestFilter/test_empty_input"}
+{"Time":"2023-04-01T17:21:28.934617044+03:00","Action":"cont","Package":"github.com/robotomize/go-allure/internal/slice","Test":"TestFilter/test_filtered"}
+{"Time":"2023-04-01T17:21:28.934620821+03:00","Action":"output","Package":"github.com/robotomize/go-allure/internal/slice","Test":"TestFilter/test_filtered","Output":"=== CONT  TestFilter/test_filtered\n"}
+{"Time":"2023-04-01T17:21:28.934625368+03:00","Action":"cont","Package":"github.com/robotomize/go-allure/internal/slice","Test":"TestFilter/test_nil_input"}
+{"Time":"2023-04-01T17:21:28.934629099+03:00","Action":"output","Package":"github.com/robotomize/go-allure/internal/slice","Test":"TestFilter/test_nil_input","Output":"=== CONT  TestFilter/test_nil_input\n"}
+{"Time":"2023-04-01T17:21:28.934636825+03:00","Action":"output","Package":"github.com/robotomize/go-allure/internal/slice","Test":"TestFilter/test_nil_input","Output":"--- PASS: TestFilter/test_nil_input (0.00s)\n"}
+{"Time":"2023-04-01T17:21:28.934641556+03:00","Action":"pass","Package":"github.com/robotomize/go-allure/internal/slice","Test":"TestFilter/test_nil_input","Elapsed":0}
+{"Time":"2023-04-01T17:21:28.93464713+03:00","Action":"output","Package":"github.com/robotomize/go-allure/internal/slice","Test":"TestFilter/test_filtered","Output":"    slice_test.go:96: got: [3 4], want: [3]\n"}
+{"Time":"2023-04-01T17:21:28.934652453+03:00","Action":"output","Package":"github.com/robotomize/go-allure/internal/slice","Test":"TestFilter/test_filtered","Output":"--- FAIL: TestFilter/test_filtered (0.00s)\n"}
+{"Time":"2023-04-01T17:21:28.934659261+03:00","Action":"fail","Package":"github.com/robotomize/go-allure/internal/slice","Test":"TestFilter/test_filtered","Elapsed":0}
+{"Time":"2023-04-01T17:21:28.934663329+03:00","Action":"cont","Package":"github.com/robotomize/go-allure/internal/slice","Test":"TestFilter/test_filtered_empty"}
+{"Time":"2023-04-01T17:21:28.934667282+03:00","Action":"output","Package":"github.com/robotomize/go-allure/internal/slice","Test":"TestFilter/test_filtered_empty","Output":"=== CONT  TestFilter/test_filtered_empty\n"}
+{"Time":"2023-04-01T17:21:28.934671853+03:00","Action":"cont","Package":"github.com/robotomize/go-allure/internal/slice","Test":"TestFilter/test_empty_input"}
+{"Time":"2023-04-01T17:21:28.934675936+03:00","Action":"output","Package":"github.com/robotomize/go-allure/internal/slice","Test":"TestFilter/test_empty_input","Output":"=== CONT  TestFilter/test_empty_input\n"}
+{"Time":"2023-04-01T17:21:28.93468126+03:00","Action":"output","Package":"github.com/robotomize/go-allure/internal/slice","Test":"TestFilter/test_filtered_empty","Output":"--- PASS: TestFilter/test_filtered_empty (0.00s)\n"}
+{"Time":"2023-04-01T17:21:28.934687304+03:00","Action":"pass","Package":"github.com/robotomize/go-allure/internal/slice","Test":"TestFilter/test_filtered_empty","Elapsed":0}
+{"Time":"2023-04-01T17:21:28.934691505+03:00","Action":"output","Package":"github.com/robotomize/go-allure/internal/slice","Test":"TestFilter/test_empty_input","Output":"--- PASS: TestFilter/test_empty_input (0.00s)\n"}
+{"Time":"2023-04-01T17:21:28.934697346+03:00","Action":"pass","Package":"github.com/robotomize/go-allure/internal/slice","Test":"TestFilter/test_empty_input","Elapsed":0}
+{"Time":"2023-04-01T17:21:28.934701383+03:00","Action":"output","Package":"github.com/robotomize/go-allure/internal/slice","Test":"TestFilter","Output":"--- FAIL: TestFilter (0.00s)\n"}
+{"Time":"2023-04-01T17:21:28.934705537+03:00","Action":"fail","Package":"github.com/robotomize/go-allure/internal/slice","Test":"TestFilter","Elapsed":0}
+{"Time":"2023-04-01T17:21:28.934709355+03:00","Action":"output","Package":"github.com/robotomize/go-allure/internal/slice","Output":"FAIL\n"}
+{"Time":"2023-04-01T17:21:28.935041142+03:00","Action":"output","Package":"github.com/robotomize/go-allure/internal/slice","Output":"FAIL\tgithub.com/robotomize/go-allure/internal/slice\t0.002s\n"}
+{"Time":"2023-04-01T17:21:28.935071087+03:00","Action":"fail","Package":"github.com/robotomize/go-allure/internal/slice","Elapsed":0.002}

@@ -26,7 +26,6 @@ type Entry struct {
 
 type Test struct {
 	Name    string
-	Log     string
 	Package string
 	Stage   string
 	Start   time.Time

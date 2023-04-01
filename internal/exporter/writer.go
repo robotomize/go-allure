@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 
@@ -23,8 +24,8 @@ func WithOutputPth(pth string) WriterOption {
 	}
 }
 
-func NewWriter(opts ...WriterOption) Writer {
-	w := writer{}
+func NewWriter(w1 io.Writer, opts ...WriterOption) Writer {
+	w := writer{w: w1}
 	for _, o := range opts {
 		o(&w)
 	}
@@ -34,6 +35,7 @@ func NewWriter(opts ...WriterOption) Writer {
 
 type writer struct {
 	pth string
+	w   io.Writer
 }
 
 func (o *writer) WriteReport(ctx context.Context, tests []allure.Test) error {
@@ -97,7 +99,8 @@ func (o *writer) writeAttachmentFile(attachment Attachment) error {
 }
 
 func (o *writer) write(tc allure.Test) error {
-	dst := os.Stdout
+	writers := []io.Writer{o.w}
+
 	if o.pth != "" {
 		pth := filepath.Join(o.pth, fmt.Sprintf("%s-result.json", tc.UUID))
 
@@ -107,10 +110,13 @@ func (o *writer) write(tc allure.Test) error {
 		}
 
 		defer file.Close()
-		dst = file
+
+		writers = append(writers, file)
 	}
 
-	if err := json.NewEncoder(dst).Encode(tc); err != nil {
+	w := io.MultiWriter(writers...)
+
+	if err := json.NewEncoder(w).Encode(tc); err != nil {
 		return fmt.Errorf("json.NewEncoder.Encode: %w", err)
 	}
 

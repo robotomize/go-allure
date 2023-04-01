@@ -44,6 +44,7 @@ Flags:
       --gotags string          pass custom build tags: --gotags integration,fixture,linux
   -h, --help                   help for golurectl
   -o, --output string          output path to allure reports: -o <report-path>
+  -s, --silent                 silent allure report output
   -v, --verbose                verbose
 
 Use "golurectl [command] --help" for more information about a command.
@@ -69,7 +70,7 @@ go test -json -cover  ./...|golurectl -l -e -o reports-dir --gotags integration 
 
 ## Examples
 
-We have the following set of tests along with subtests 
+We have the following set of tests along with subtests
 
 ```go
 //go:build !all && fixtures
@@ -102,13 +103,15 @@ func TestMarshal(t *testing.T) {
 
 	for _, tc := range testCases {
 		tc := tc
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-			result, _ := Marshal(tc.input)
-			if len(result) != tc.expected {
-				t.Errorf("got: %d, want: %d", len(result), tc.expected)
+		t.Run(
+			tc.name, func(t *testing.T) {
+				t.Parallel()
+				result, _ := Marshal(tc.input)
+				if len(result) != tc.expected {
+					t.Errorf("got: %d, want: %d", len(result), tc.expected)
+				}
 			}
-		})
+		)
 	}
 }
 
@@ -140,27 +143,29 @@ func TestUnmarshal(t *testing.T) {
 
 	for _, tc := range testCases {
 		tc := tc
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-			result, _ := Marshal(tc.input)
-			if len(result) != tc.expected {
-				t.Errorf("got: %d, want: %d", len(result), tc.expected)
+		t.Run(
+			tc.name, func(t *testing.T) {
+				t.Parallel()
+				result, _ := Marshal(tc.input)
+				if len(result) != tc.expected {
+					t.Errorf("got: %d, want: %d", len(result), tc.expected)
+				}
+				var sStruct simpleStruct
+				if err := Unmarshal(result, &sStruct); err != nil {
+					t.Errorf("Unmarshal: %v", err)
+				}
+				if !reflect.DeepEqual(sStruct, tc.input) {
+					t.Errorf("got: %v, want: %v", false, true)
+				}
 			}
-			var sStruct simpleStruct
-			if err := Unmarshal(result, &sStruct); err != nil {
-				t.Errorf("Unmarshal: %v", err)
-			}
-			if !reflect.DeepEqual(sStruct, tc.input) {
-				t.Errorf("got: %v, want: %v", false, true)
-			}
-		})
+		)
 	}
 }
 
 
 ```
 
-We can feed the go test output into golurectl. 
+We can feed the go test output into golurectl.
 golurectl will display the results of the go test and generate a report in allure.
 
 ```shell

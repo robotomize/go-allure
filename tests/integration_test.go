@@ -8,10 +8,12 @@ import (
 	"context"
 	"embed"
 	_ "embed"
+	"io"
 	"os"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+
 	"github.com/robotomize/go-allure/internal/golist"
 	"github.com/robotomize/go-allure/internal/gotest"
 	"github.com/robotomize/go-allure/internal/parser"
@@ -20,7 +22,7 @@ import (
 	"github.com/robotomize/go-allure/internal/exporter"
 )
 
-//go:embed fixtures
+//go:embed testdata
 var ffs embed.FS
 
 func TestConv(t *testing.T) {
@@ -36,13 +38,13 @@ func TestConv(t *testing.T) {
 		t.Fatalf("os.Getwd: %v", err)
 	}
 
-	fixt, err := ffs.ReadFile("fixtures/test_sample.txt")
+	testSet, err := ffs.ReadFile("testdata/sample_fixture.txt")
 	if err != nil {
 		return
 	}
 
-	r := gotest.NewReader(bytes.NewReader(fixt))
-	w := exporter.NewWriter()
+	r := gotest.NewReader(bytes.NewReader(testSet))
+	w := exporter.NewWriter(io.Discard)
 	p := parser.New(golist.NewRetriever(os.DirFS(pwd), "fixtures"))
 
 	e := exporter.New(p, r)

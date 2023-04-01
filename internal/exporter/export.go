@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
 	"github.com/robotomize/go-allure/internal/allure"
 	"github.com/robotomize/go-allure/internal/gotest"
 	"github.com/robotomize/go-allure/internal/parser"
@@ -59,7 +60,7 @@ func WithAllureLabels(labels ...allure.Label) Option {
 }
 
 type Reader interface {
-	ReadAll() (gotest.Set, error)
+	ReadAll(ctx context.Context) (gotest.Set, error)
 }
 
 type FileParser interface {
@@ -105,7 +106,7 @@ func (e *exporter) Read(ctx context.Context) error {
 		e.files[key] = file
 	}
 
-	all, err := e.stdinReader.ReadAll()
+	all, err := e.stdinReader.ReadAll(ctx)
 	if err != nil {
 		return fmt.Errorf("stdin reader ReadAll: %w", err)
 	}
@@ -129,10 +130,15 @@ func (e *exporter) Export() (Report, error) {
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 
+	attachments := make([]Attachment, 0)
+	defer func() {
+		result.Attachments = append(result.Attachments, attachments...)
+	}()
+
 	go func() {
-		wg.Done()
+		defer wg.Done()
 		for attachment := range attachmentCh {
-			result.Attachments = append(result.Attachments, attachment)
+			attachments = append(attachments, attachment)
 		}
 	}()
 
