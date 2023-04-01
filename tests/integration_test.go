@@ -25,14 +25,14 @@ import (
 //go:embed testdata
 var ffs embed.FS
 
-func TestConv(t *testing.T) {
+func TestExport(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
 
 	// TestUnmarshal - fail
 	// TestMarshal - pass
-	// TestConv - pass
+	// TestExport - pass
 	pwd, err := os.Getwd()
 	if err != nil {
 		t.Fatalf("os.Getwd: %v", err)
@@ -40,7 +40,7 @@ func TestConv(t *testing.T) {
 
 	testSet, err := ffs.ReadFile("testdata/sample_fixture.txt")
 	if err != nil {
-		return
+		t.Fatalf("fs ReadFile: %v", err)
 	}
 
 	r := gotest.NewReader(bytes.NewReader(testSet))
@@ -83,10 +83,6 @@ func TestConv(t *testing.T) {
 					}
 				default:
 				}
-			}
-		case "TestConv":
-			if diff := cmp.Diff(allure.StatusPass, tc.Status); diff != "" {
-				t.Errorf("bad message (+got, -want): %s", diff)
 			}
 		default:
 		}
