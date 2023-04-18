@@ -123,7 +123,7 @@ func (e *exporter) Export() (Report, error) {
 
 	const sampleBufferSize = 4096
 
-	logBuf := bytes.NewBuffer(make([]byte, sampleBufferSize))
+	logBuf := bytes.NewBuffer(make([]byte, 0, sampleBufferSize))
 	result.OutputLog = logBuf
 
 	attachmentCh := make(chan Attachment)
