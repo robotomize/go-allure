@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/fs"
 	"os/exec"
 	"path/filepath"
@@ -40,11 +41,11 @@ type Module struct {
 	GoVersion string `json:"GoVersion"`
 }
 
-func DirPackages(ctx context.Context, sfs fs.FS, args ...string) ([]Package, error) {
+func DirPackages(ctx context.Context, dfs FS, args ...string) ([]Package, error) {
 	packages := make([]Package, 0)
 
 	if err := fs.WalkDir(
-		sfs, ".", func(pth string, entry fs.DirEntry, err error) error {
+		dfs, ".", func(pth string, entry fs.DirEntry, err error) error {
 			skip := strings.HasPrefix(entry.Name(), ".") || strings.HasPrefix(entry.Name(), "..") || entry.IsDir()
 			if skip {
 				return nil
@@ -52,6 +53,10 @@ func DirPackages(ctx context.Context, sfs fs.FS, args ...string) ([]Package, err
 
 			if entry.Name() == "go.mod" {
 				d, _ := filepath.Split(pth)
+				if d == "" {
+					d = dfs.RootDir()
+				}
+
 				list, err := listPackages(ctx, d, args...)
 				if err != nil {
 					return fmt.Errorf("listPackages: %w", err)
@@ -70,16 +75,24 @@ func DirPackages(ctx context.Context, sfs fs.FS, args ...string) ([]Package, err
 }
 
 func listPackages(ctx context.Context, dir string, args ...string) ([]Package, error) {
-	names, err := packageNames(dir)
+	var pkgNames []string
+	packagesBuf, err := goList(ctx, dir, append(args, "./..."))
 	if err != nil {
-		return nil, fmt.Errorf("packageNames: %w", err)
+		return nil, err
 	}
 
-	goListArgs := append([]string{"list", "-json"}, args...)
-	goPackages := make([]Package, 0, len(names))
+	scanner := bufio.NewScanner(packagesBuf)
+	for scanner.Scan() {
+		if err = scanner.Err(); err != nil {
+			return nil, fmt.Errorf("bufio.NewScaner.Err: %w", err)
+		}
+
+		pkgNames = append(pkgNames, scanner.Text())
+	}
+
+	goPkgs := make([]Package, 0, len(pkgNames))
 
 	ch := make(chan Package)
-
 	closeCh := make(chan struct{})
 
 	wg, grpCtx := errgroup.WithContext(ctx)
@@ -88,14 +101,14 @@ func listPackages(ctx context.Context, dir string, args ...string) ([]Package, e
 	go func() {
 		defer close(closeCh)
 
-		for goPackage := range ch {
-			goPackages = append(goPackages, goPackage)
+		for pkg := range ch {
+			goPkgs = append(goPkgs, pkg)
 		}
 	}()
 
 OuterLoop:
-	for _, packageName := range names {
-		packageName := packageName
+	for _, pkgName := range pkgNames {
+		pkg := pkgName
 
 		select {
 		case <-grpCtx.Done():
@@ -105,28 +118,20 @@ OuterLoop:
 
 		wg.Go(
 			func() error {
-				select {
-				case <-grpCtx.Done():
-					return nil
-				default:
+				pkgArgs := append([]string{"-json"}, args...)
+				pkgArgs = append(pkgArgs, pkg)
+
+				packageBuf, pkgErr := goList(grpCtx, dir, pkgArgs)
+				if pkgErr != nil {
+					return fmt.Errorf("goList: %w", pkgErr)
 				}
 
-				const sampleBufferSize = 4096
-				buf := bytes.NewBuffer(make([]byte, 0, sampleBufferSize))
-				goListCmd := exec.Command("go", append(goListArgs, packageName)...)
-				goListCmd.Stdout = buf
-				goListCmd.Dir = dir
-				goListCmd.Stdin = strings.NewReader("")
-				if err = goListCmd.Run(); err != nil {
-					return fmt.Errorf("command Run go list -json %s.: %w", packageName, err)
+				var goPkg Package
+				if dErr := json.NewDecoder(packageBuf).Decode(&goPkg); dErr != nil {
+					return fmt.Errorf("json.NewDecoder.Decode: %w", dErr)
 				}
 
-				var goPackage Package
-				if err = json.Unmarshal(buf.Bytes(), &goPackage); err != nil {
-					return fmt.Errorf("json.Unmarshal: %w", err)
-				}
-
-				ch <- goPackage
+				ch <- goPkg
 
 				return nil
 			},
@@ -145,25 +150,23 @@ OuterLoop:
 	case <-closeCh:
 	}
 
-	return goPackages, nil
+	return goPkgs, nil
 }
 
-func packageNames(dir string) ([]string, error) {
-	var names []string
+func goList(ctx context.Context, dir string, args []string) (io.Reader, error) {
+	const bufSize = 4096
 
-	buf := bytes.NewBuffer(make([]byte, 0, 4096))
-	goListCmd := exec.Command("go", "list", "./...")
-	goListCmd.Stdin = strings.NewReader("")
-	goListCmd.Stdout = buf
-	goListCmd.Dir = dir
-	if err := goListCmd.Run(); err != nil {
-		return nil, fmt.Errorf("command Run go list %s/./...: %w", dir, err)
+	b := bytes.NewBuffer(make([]byte, 0, bufSize))
+	cmd := exec.CommandContext(ctx, "go", append([]string{"list"}, args...)...)
+	cmd.Stdout = b
+	cmd.Dir = dir
+
+	cmd.Stdin = strings.NewReader("")
+	if err := cmd.Run(); err != nil {
+		return nil, fmt.Errorf("command Run go %s: %w", strings.Join(args, " "), err)
 	}
 
-	scanner := bufio.NewScanner(buf)
-	for scanner.Scan() {
-		names = append(names, scanner.Text())
-	}
+	b1 := bytes.NewBuffer(b.Bytes())
 
-	return names, nil
+	return b1, nil
 }

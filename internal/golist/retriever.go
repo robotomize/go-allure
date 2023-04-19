@@ -6,16 +6,21 @@ import (
 	"io/fs"
 )
 
+type FS interface {
+	fs.FS
+	RootDir() string
+}
+
 type PackageRetriever interface {
 	Retrieve(ctx context.Context) ([]Package, error)
 }
 
-func NewRetriever(fs fs.FS, goBuildTags ...string) PackageRetriever {
+func NewRetriever(fs FS, goBuildTags ...string) PackageRetriever {
 	return &retriever{fs: fs, args: goBuildTags}
 }
 
 type retriever struct {
-	fs   fs.FS
+	fs   FS
 	args []string
 }
 

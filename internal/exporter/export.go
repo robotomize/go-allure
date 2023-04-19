@@ -119,26 +119,26 @@ func (e *exporter) Read(ctx context.Context) error {
 }
 
 func (e *exporter) Export() (Report, error) {
-	var result Report
+	const goOutputSize = 4096
 
-	const sampleBufferSize = 4096
+	goOutputBuf := bytes.NewBuffer(make([]byte, 0, goOutputSize))
 
-	logBuf := bytes.NewBuffer(make([]byte, 0, sampleBufferSize))
-	result.OutputLog = logBuf
+	result := Report{
+		Err:       e.readErr,
+		OutputLog: goOutputBuf,
+	}
+
+	result.OutputLog = goOutputBuf
 
 	attachmentCh := make(chan Attachment)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 
-	attachments := make([]Attachment, 0)
-	defer func() {
-		result.Attachments = append(result.Attachments, attachments...)
-	}()
-
 	go func() {
 		defer wg.Done()
+
 		for attachment := range attachmentCh {
-			attachments = append(attachments, attachment)
+			result.Attachments = append(result.Attachments, attachment)
 		}
 	}()
 
@@ -205,7 +205,7 @@ func (e *exporter) Export() (Report, error) {
 		e.addStep(&allureTestCase, testCase, attachmentCh)
 		result.Tests = append(result.Tests, allureTestCase)
 
-		logBuf.Write(testCase.Log)
+		goOutputBuf.Write(testCase.Log)
 	}
 
 	close(attachmentCh)

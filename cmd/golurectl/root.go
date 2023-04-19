@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/robotomize/go-allure/internal/fs"
 	"github.com/spf13/cobra"
 
 	"github.com/robotomize/go-allure/internal/allure"
@@ -99,14 +100,14 @@ func init() {
 		"attachment-force",
 		"a",
 		false,
-		"add a log of pass and failed tests to the attachments",
+		"create attachments for passed tests",
 	)
 	rootCmd.PersistentFlags().BoolVarP(
 		&silentOutput,
 		"silent",
 		"s",
 		false,
-		"silent report output",
+		"silent allure report output(JSON)",
 	)
 }
 
@@ -135,41 +136,26 @@ var rootCmd = &cobra.Command{
 			buildArgs = append([]string{"-tags"}, strings.Split(strings.TrimSpace(goBuildTagsFlag), ",")...)
 		}
 
-		r := gotest.NewReader(os.Stdin)
-		p := parser.New(golist.NewRetriever(os.DirFS(pwd), buildArgs...))
-
-		e := exporter.New(p, r, opts...)
-		if err := e.Read(ctx); err != nil {
+		pkgReader := gotest.NewReader(os.Stdin)
+		goParser := parser.New(golist.NewRetriever(fs.New(pwd), buildArgs...))
+		allureExporter := exporter.New(goParser, pkgReader, opts...)
+		if err := allureExporter.Read(ctx); err != nil {
 			return fmt.Errorf("exporter Read: %w", err)
 		}
 
-		result, err := e.Export()
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "\nTrying to generate an allure report\n")
+		allureReport, err := allureExporter.Export()
 		if err != nil {
 			return fmt.Errorf("exporter Export: %w", err)
 		}
 
-		if verboseFlag && result.Err != nil {
-			if _, err := cmd.OutOrStdout().Write([]byte(result.Err.Error())); err != nil {
-				return err
-			}
+		if verboseFlag && allureReport.Err != nil {
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Read go test output log: %s", allureReport.Err.Error())
 		}
 
 		if forwardGoTestLog {
-			if _, err := io.Copy(cmd.OutOrStdout(), result.OutputLog); err != nil {
+			if _, err := io.Copy(cmd.OutOrStdout(), allureReport.OutputLog); err != nil {
 				return fmt.Errorf("io.сopy: %w", err)
-			}
-		}
-
-		if forwardGoTestExitCode {
-			var failed bool
-			for _, tc := range result.Tests {
-				if !failed && (tc.Status == allure.StatusFail || tc.Status == allure.StatusBroken) {
-					failed = true
-				}
-			}
-
-			if failed {
-				os.Exit(1)
 			}
 		}
 
@@ -185,12 +171,36 @@ var rootCmd = &cobra.Command{
 
 		writer := exporter.NewWriter(outputWriter, outOpts...)
 
-		if err := writer.WriteReport(ctx, result.Tests); err != nil {
+		if len(outputDirFlag) > 0 && len(allureReport.Tests) > 0 {
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Write report files\n")
+		}
+
+		if err := writer.WriteReport(ctx, allureReport.Tests); err != nil {
 			return fmt.Errorf("exporter.NewWriter WriteReport: %w", err)
 		}
 
-		if err := writer.WriteAttachments(ctx, result.Attachments); err != nil {
+		if len(outputDirFlag) > 0 && len(allureReport.Attachments) > 0 {
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Write attachments\n")
+		}
+
+		if err := writer.WriteAttachments(ctx, allureReport.Attachments); err != nil {
 			return fmt.Errorf("exporter.NewWriter WriteAttachments: %w", err)
+		}
+
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Conversion completed successfully\n")
+
+		if forwardGoTestExitCode {
+			var failed bool
+			for _, tc := range allureReport.Tests {
+				if !failed && (tc.Status == allure.StatusFail || tc.Status == allure.StatusBroken) {
+					failed = true
+				}
+			}
+
+			if failed {
+				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "One or more go tests failed. exiting with error 1\n")
+				os.Exit(1)
+			}
 		}
 
 		return nil
