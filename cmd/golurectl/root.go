@@ -111,6 +111,7 @@ func init() {
 	)
 }
 
+// Declare the root command for the CLI tool.
 var rootCmd = &cobra.Command{
 	Use:          "golurectl",
 	Long:         "Export go test output to allure reports",
@@ -122,48 +123,62 @@ var rootCmd = &cobra.Command{
 			exporter.WithAllureLabels(processAllureLabels()...),
 		}
 
+		// Add option to force attachment
 		if allureAttachmentForce {
 			opts = append(opts, exporter.WithForceAttachment())
 		}
 
+		// Get the present working directory
 		pwd, err := os.Getwd()
 		if err != nil {
 			return fmt.Errorf("os.Getwd: %w", err)
 		}
 
+		// Add go build tags if provided
 		var buildArgs []string
 		if goBuildTagsFlag != "" {
 			buildArgs = append([]string{"-tags"}, strings.Split(strings.TrimSpace(goBuildTagsFlag), ",")...)
 		}
 
+		// Create the reader to read the go test output
 		pkgReader := gotest.NewReader(os.Stdin)
+
+		// Create the parser using the go list retriver
 		goParser := parser.New(golist.NewRetriever(fs.New(pwd), buildArgs...))
+
+		// Create the allure exporter with the options
 		allureExporter := exporter.New(goParser, pkgReader, opts...)
+
+		// Read the go test output and parse it into allure reports
 		if err := allureExporter.Read(ctx); err != nil {
 			return fmt.Errorf("exporter Read: %w", err)
 		}
 
-		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "\nTrying to generate an allure report\n")
+		// Convert go tests to allure report
 		allureReport, err := allureExporter.Export()
 		if err != nil {
-			return fmt.Errorf("exporter Export: %w", err)
+			return fmt.Errorf("allure exporter: %w", err)
 		}
 
+		// Print message if verbose flag is enabled
 		if verboseFlag && allureReport.Err != nil {
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Read go test output log: %s", allureReport.Err.Error())
 		}
 
+		// Copy go test output log if forwardGoTestLog flag is enabled
 		if forwardGoTestLog {
 			if _, err := io.Copy(cmd.OutOrStdout(), allureReport.OutputLog); err != nil {
 				return fmt.Errorf("io.сopy: %w", err)
 			}
 		}
 
+		// Set options for the exporter writer
 		var outOpts []exporter.WriterOption
 		if outputDirFlag != "" {
 			outOpts = append(outOpts, exporter.WithOutputPth(outputDirFlag))
 		}
 
+		// Create the writer with the options
 		outputWriter := io.Writer(os.Stdout)
 		if silentOutput {
 			outputWriter = io.Discard
@@ -171,24 +186,27 @@ var rootCmd = &cobra.Command{
 
 		writer := exporter.NewWriter(outputWriter, outOpts...)
 
+		// Write the report files
 		if len(outputDirFlag) > 0 && len(allureReport.Tests) > 0 {
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Write report files\n")
+
+			if err := writer.WriteReport(ctx, allureReport.Tests); err != nil {
+				return fmt.Errorf("exporter.NewWriter WriteReport: %w", err)
+			}
 		}
 
-		if err := writer.WriteReport(ctx, allureReport.Tests); err != nil {
-			return fmt.Errorf("exporter.NewWriter WriteReport: %w", err)
-		}
-
+		// Write the attachments
 		if len(outputDirFlag) > 0 && len(allureReport.Attachments) > 0 {
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Write attachments\n")
-		}
 
-		if err := writer.WriteAttachments(ctx, allureReport.Attachments); err != nil {
-			return fmt.Errorf("exporter.NewWriter WriteAttachments: %w", err)
+			if err := writer.WriteAttachments(ctx, allureReport.Attachments); err != nil {
+				return fmt.Errorf("exporter.NewWriter WriteAttachments: %w", err)
+			}
 		}
 
 		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Conversion completed successfully\n")
 
+		// Exit with error code 1 if one or more go tests failed
 		if forwardGoTestExitCode {
 			var failed bool
 			for _, tc := range allureReport.Tests {

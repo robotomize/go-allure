@@ -19,7 +19,7 @@ type Parser struct {
 	PackageRetriever
 }
 
-func (p *Parser) ParseFiles(ctx context.Context) ([]GoTestFile, error) {
+func (p *Parser) ParseFiles(ctx context.Context) ([]GoTestMethod, error) {
 	packages, err := p.Retrieve(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("PackageRetriever Retrieve: %w", err)

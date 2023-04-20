@@ -41,11 +41,14 @@ type Module struct {
 	GoVersion string `json:"GoVersion"`
 }
 
+// DirPackages - walk fs and collects all go packages found on directory.
 func DirPackages(ctx context.Context, dfs FS, args ...string) ([]Package, error) {
 	packages := make([]Package, 0)
 
+	// Use fs.WalkDir to recursively walk through the file system and detect Go modules.
 	if err := fs.WalkDir(
 		dfs, ".", func(pth string, entry fs.DirEntry, err error) error {
+			// Skip hidden directories and files, and non-directories.
 			skip := strings.HasPrefix(entry.Name(), ".") || strings.HasPrefix(entry.Name(), "..") || entry.IsDir()
 			if skip {
 				return nil
@@ -74,13 +77,17 @@ func DirPackages(ctx context.Context, dfs FS, args ...string) ([]Package, error)
 	return packages, nil
 }
 
+// list go packages in given directory.
 func listPackages(ctx context.Context, dir string, args ...string) ([]Package, error) {
 	var pkgNames []string
+
+	// Use the goList function to list all packages in the directory, append them to the pkgNames slice.
 	packagesBuf, err := goList(ctx, dir, append(args, "./..."))
 	if err != nil {
 		return nil, err
 	}
 
+	// Scan the buffer and collect package names
 	scanner := bufio.NewScanner(packagesBuf)
 	for scanner.Scan() {
 		if err = scanner.Err(); err != nil {
@@ -92,12 +99,14 @@ func listPackages(ctx context.Context, dir string, args ...string) ([]Package, e
 
 	goPkgs := make([]Package, 0, len(pkgNames))
 
+	// Use errgroup to limit the number of concurrent goroutines.
+	// Declare a channel to hold the parsed Package objects, and a wait group.
 	ch := make(chan Package)
 	closeCh := make(chan struct{})
-
 	wg, grpCtx := errgroup.WithContext(ctx)
 	wg.SetLimit(runtime.NumCPU())
 
+	// Start a goroutine to append the parsed Package objects to the goPkgs slice.
 	go func() {
 		defer close(closeCh)
 
@@ -106,16 +115,19 @@ func listPackages(ctx context.Context, dir string, args ...string) ([]Package, e
 		}
 	}()
 
+	// Loop through the package names and use errgroup to parse the package data concurrently.
 OuterLoop:
 	for _, pkgName := range pkgNames {
 		pkg := pkgName
 
+		// Check if the group context is done to break out of the loop.
 		select {
 		case <-grpCtx.Done():
 			break OuterLoop
 		default:
 		}
 
+		// Use errgroup to run the goList command on the package name and parse the returned JSON data.
 		wg.Go(
 			func() error {
 				pkgArgs := append([]string{"-json"}, args...)
@@ -131,6 +143,7 @@ OuterLoop:
 					return fmt.Errorf("json.NewDecoder.Decode: %w", dErr)
 				}
 
+				// Send the parsed Package object to the channel.
 				ch <- goPkg
 
 				return nil
@@ -144,6 +157,8 @@ OuterLoop:
 
 	close(ch)
 
+	// Check if the context is done to return early.
+	// Otherwise, wait for the channel to close and return the slice of Package objects.
 	select {
 	case <-ctx.Done():
 		return nil, ctx.Err()

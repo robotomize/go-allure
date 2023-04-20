@@ -64,7 +64,7 @@ type Reader interface {
 }
 
 type FileParser interface {
-	ParseFiles(ctx context.Context) ([]parser.GoTestFile, error)
+	ParseFiles(ctx context.Context) ([]parser.GoTestMethod, error)
 }
 
 type AllureExporter interface {
@@ -76,7 +76,7 @@ func New(fileParser FileParser, reader Reader, opts ...Option) AllureExporter {
 	c := exporter{
 		stdinReader: reader,
 		fileParser:  fileParser,
-		files:       make(map[string]parser.GoTestFile),
+		files:       make(map[string]parser.GoTestMethod),
 	}
 
 	for _, o := range opts {
@@ -92,25 +92,26 @@ type exporter struct {
 	fileParser  FileParser
 	stdinReader Reader
 	tests       []gotest.NestedTest
-	files       map[string]parser.GoTestFile
+	files       map[string]parser.GoTestMethod
 }
 
+// Read reads the test files using the file parser, saves them in a map and reads the test output from stdi.
 func (e *exporter) Read(ctx context.Context) error {
+	// Parse the files using the file parser and save them in a map.
 	files, err := e.fileParser.ParseFiles(ctx)
 	if err != nil {
 		return fmt.Errorf("go parser ParseFiles: %w", err)
 	}
-
 	for _, file := range files {
 		key := file.PackageName + file.TestName
 		e.files[key] = file
 	}
 
+	// Read the test output from stdin using the stdin reader and save the results in the exporter.
 	all, err := e.stdinReader.ReadAll(ctx)
 	if err != nil {
 		return fmt.Errorf("stdin reader ReadAll: %w", err)
 	}
-
 	e.tests = make([]gotest.NestedTest, len(all.Tests))
 	copy(e.tests, all.Tests)
 	e.readErr = all.Err
@@ -118,9 +119,10 @@ func (e *exporter) Read(ctx context.Context) error {
 	return nil
 }
 
+// Export converts Go test results to Allure test report format.
 func (e *exporter) Export() (Report, error) {
+	// Create a buffer for storing Go test output based on a fixed size.
 	const goOutputSize = 4096
-
 	goOutputBuf := bytes.NewBuffer(make([]byte, 0, goOutputSize))
 
 	result := Report{
@@ -128,32 +130,31 @@ func (e *exporter) Export() (Report, error) {
 		OutputLog: goOutputBuf,
 	}
 
-	result.OutputLog = goOutputBuf
-
 	attachmentCh := make(chan Attachment)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 
+	// Process attachments in the channel and update them in the Report.
 	go func() {
 		defer wg.Done()
-
 		for attachment := range attachmentCh {
 			result.Attachments = append(result.Attachments, attachment)
 		}
 	}()
 
+	// Prepare a hash function to calculate unique IDs for Allure test cases.
 	hashFn := md5.New()
-
 	hasher := func(b []byte) []byte {
 		hashFn.Reset()
 		hashFn.Write(b)
-
 		return hashFn.Sum(nil)
 	}
 
+	// Iterate through each Go test case and create an Allure test case with associated metadata and attachments.
 	for _, testCase := range e.tests {
 		goTest := testCase.Value
 
+		// Generate a unique ID for the Allure test case and determine its status based on the Go test status.
 		id := uuid.New().String()
 		status := e.convertStatus(goTest)
 
@@ -168,20 +169,21 @@ func (e *exporter) Export() (Report, error) {
 			Attachments: make([]allure.Attachment, 0),
 		}
 
+		// Add default labels to the Allure test case
 		e.defaultLabels(goTest, &allureTestCase)
 
+		// Calculate test case ID as test case full name
 		testCaseID := hasher([]byte(allureTestCase.FullName))
-
-		if goTest.Stop.Before(goTest.Start) {
-			goTest.Stop = time.Now()
-		}
-
+		// Generate history ID as hash of test case ID
 		historyID := hasher(testCaseID)
+
 		allureTestCase.TestCaseID = hex.EncodeToString(testCaseID)
 		allureTestCase.HistoryID = hex.EncodeToString(historyID)
 		allureTestCase.Start = goTest.Start.UnixMilli()
 		allureTestCase.Stop = goTest.Stop.UnixMilli()
 
+		// Check if the Go test case has a panic or failure and add the test case log as an attachment to the Allure test case.
+		// Also, add a corresponding attachment to the Allure test case to enable viewing of the test case log in the report.
 		hasAttachment := e.opts.forceAttachment || goTest.Status == gotest.ActionPanic || goTest.Status == gotest.ActionFail
 		if hasAttachment {
 			source := fmt.Sprintf("%s-attachment.txt", uuid.New().String())
@@ -192,7 +194,6 @@ func (e *exporter) Export() (Report, error) {
 				Source: source,
 				Body:   testCase.Log,
 			}
-
 			allureTestCase.Attachments = append(
 				allureTestCase.Attachments, allure.Attachment{
 					Name:   goTest.Name,
@@ -202,26 +203,31 @@ func (e *exporter) Export() (Report, error) {
 			)
 		}
 
+		// Add test steps to the Allure test case and add it to the Report.
 		e.addStep(&allureTestCase, testCase, attachmentCh)
 		result.Tests = append(result.Tests, allureTestCase)
 
+		// Write the Go test log to the output buffer.
 		goOutputBuf.Write(testCase.Log)
 	}
 
 	close(attachmentCh)
-
 	wg.Wait()
 
 	return result, nil
 }
 
+// addStep appends Allure test steps to a given Allure object from a given list of nested Go test cases.
 func (e *exporter) addStep(allureObj any, testCase gotest.NestedTest, ch chan<- Attachment) {
+	// Iterate through each child test case and create an Allure step with metadata and associated attachments.
 	for _, tc := range testCase.Children {
 		goTest := tc.Value
+		// If the Go test time values are invalid, set them to the current time.
 		if goTest.Stop.Before(goTest.Start) {
 			goTest.Stop = time.Now()
 		}
 
+		// Get the test case name and status and create an Allure step with it.
 		name := goTest.Name
 		status := e.convertStatus(goTest)
 
@@ -236,11 +242,14 @@ func (e *exporter) addStep(allureObj any, testCase gotest.NestedTest, ch chan<- 
 			Parameters:  make([]allure.Parameter, 0),
 		}
 
+		// Check if the Go test case has a panic or failure and add the test case log as an attachment to the Allure step.
+		// Also, add a corresponding attachment to the Allure step to enable viewing of the test case log in the report.
 		hasAttachment := e.opts.forceAttachment || goTest.Status == gotest.ActionPanic || goTest.Status == gotest.ActionFail
 		if hasAttachment {
 			source := fmt.Sprintf("%s-attachment.txt", uuid.New().String())
 			mime := "plain/text"
 
+			// It also saves attachments from the Go test cases if they are present
 			ch <- Attachment{
 				Name:   goTest.Name,
 				Mime:   mime,
