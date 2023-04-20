@@ -245,7 +245,7 @@ func (e *exporter) addStep(allureObj any, testCase gotest.NestedTest, ch chan<- 
 				Name:   goTest.Name,
 				Mime:   mime,
 				Source: source,
-				Body:   testCase.Log,
+				Body:   tc.Log,
 			}
 
 			step.Attachments = append(
