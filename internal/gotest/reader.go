@@ -10,8 +10,6 @@ import (
 	"io"
 	"sort"
 	"strings"
-
-	"github.com/robotomize/go-allure/internal/slice"
 )
 
 type NestedTest struct {
@@ -95,7 +93,6 @@ func (r *Reader) ReadAll(ctx context.Context) (Set, error) {
 
 // The walk function takes in a prefix node and a prefix log as parameters
 // and returns a NestedTest struct and a boolean value.
-
 func (r *Reader) walk(node *prefixNode, prefix *prefixLog) (NestedTest, bool) {
 	var testCase NestedTest
 
@@ -150,40 +147,43 @@ func (r *Reader) walk(node *prefixNode, prefix *prefixLog) (NestedTest, bool) {
 	}
 
 	// Read all the bytes from the reader and convert it into a string slice.
-	all, err := io.ReadAll(reader)
-	if err != nil {
-		return NestedTest{}, false
+	// all, err := io.ReadAll(reader)
+	// if err != nil {
+	// 	return NestedTest{}, false
+	// }
+
+	// Read all the bytes from the reader and convert it into a string slice.
+	stringSlice := make([]string, 0)
+	splitReader := bufio.NewReader(reader)
+	for {
+		rStr, rErr := splitReader.ReadString('\n')
+		if rErr != nil {
+			if errors.Is(rErr, io.EOF) {
+				break
+			}
+			return NestedTest{}, false
+		}
+		stringSlice = append(stringSlice, rStr)
 	}
 
-	// Convert bytes to strings
-	stringsSlice := slice.Map(
-		bytes.Split(all, []byte{'\n'}), func(t []byte) string {
-			return string(t) + "\n"
-		},
-	)
-
-	// Remove the newline character from the last string in the slice.
-	lastIdx := len(stringsSlice) - 1
-	stringsSlice[lastIdx] = strings.TrimSuffix(stringsSlice[lastIdx], "\n")
-
 	// Define a mark slice to hold result action rows.
-	// Initialize mx to the maximum possible integer value.
+	// Initialize mn to the maximum possible integer value.
 	mark := make([]string, 0)
-	mx := 1<<31 - 1
+	mn := 1<<31 - 1
 
 	// Iterate through the string slice from the end to the beginning.
 	// If a string is a result action row, append it to the mark slice
 	// and remove it from the string slice.
-	// Update mx to the minimum indentation count found among result action rows.
-	for i := len(stringsSlice) - 1; i >= 0; i-- {
-		if isResultActionRow(stringsSlice[i]) {
-			cnt := strings.Count(stringsSlice[i], whitespaceIndent)
-			if cnt < mx {
-				mx = cnt
+	// Update mn to the minimum indentation count found among result action rows.
+	for i := len(stringSlice) - 1; i >= 0; i-- {
+		if isResultActionRow(stringSlice[i]) {
+			cnt := strings.Count(stringSlice[i], whitespaceIndent)
+			if cnt < mn {
+				mn = cnt
 			}
 
-			mark = append(mark, stringsSlice[i])
-			stringsSlice = append(stringsSlice[:i], stringsSlice[i+1:]...)
+			mark = append(mark, stringSlice[i])
+			stringSlice = append(stringSlice[:i], stringSlice[i+1:]...)
 		}
 	}
 
@@ -194,14 +194,14 @@ func (r *Reader) walk(node *prefixNode, prefix *prefixLog) (NestedTest, bool) {
 		},
 	)
 
-	// Remove the whitespace for all rows in the stringsSlice and mark slices,
-	// according to the minimum indentation count (mx), and concatenate them into a byte slice.
-	log := make([]byte, 0, len(stringsSlice)+len(mark))
-	for _, row := range append(stringsSlice, mark...) {
-		log = append(log, []byte(strings.Replace(row, whitespaceIndent, "", mx))...)
+	// Remove the whitespace for all rows in the stringSlice and mark slices,
+	// according to the minimum indentation count (mn), and concatenate them into a byte slice.
+	testOutput := make([]byte, 0, len(stringSlice)+len(mark))
+	for _, row := range append(stringSlice, mark...) {
+		testOutput = append(testOutput, []byte(strings.Replace(row, whitespaceIndent, "", mn))...)
 	}
 
-	testCase.Log = log
+	testCase.Log = testOutput
 
 	return testCase, true
 }

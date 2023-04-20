@@ -43,10 +43,12 @@ func (o *writer) WriteReport(ctx context.Context, tests []allure.Test) error {
 		return err
 	}
 
-	if o.pth != "" {
-		if err := o.mkdir(); err != nil {
-			return err
-		}
+	if o.pth == "" {
+		return nil
+	}
+
+	if err := o.mkdir(); err != nil {
+		return err
 	}
 
 	for _, tc := range tests {
@@ -63,15 +65,17 @@ func (o *writer) WriteAttachments(ctx context.Context, attachments []Attachment)
 		return err
 	}
 
-	if o.pth != "" {
-		if err := o.mkdir(); err != nil {
-			return err
-		}
+	if o.pth == "" {
+		return nil
+	}
 
-		for _, attachment := range attachments {
-			if err := o.writeAttachmentFile(attachment); err != nil {
-				return err
-			}
+	if err := o.mkdir(); err != nil {
+		return err
+	}
+
+	for _, attachment := range attachments {
+		if err := o.writeAttachmentFile(attachment); err != nil {
+			return err
 		}
 	}
 
