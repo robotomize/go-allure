@@ -20,7 +20,6 @@ const defaultTestCaseDescriptionTmpl = "Test cases for %s"
 var availableCommentRegexp *regexp.Regexp
 
 func init() {
-	// availableCommentRegexp = regexp.MustCompile(`[^a-zA-Z0-9а-яА-Я\-\\.,!?;()#$%^&* ]+`)
 	availableCommentRegexp = regexp.MustCompile(`(\/\*([\s\S]*?)\*\/|\/\/(.*)$)`)
 }
 
@@ -150,6 +149,7 @@ func parse(pth string, pkg golist.Package) ([]GoTestMethod, error) {
 					comment = strings.ReplaceAll(doc.Text(), "\n", "")
 					// Remove special chars
 					comment = availableCommentRegexp.ReplaceAllString(comment, "")
+					// Trim special comments chars
 					comment = strings.TrimLeft(comment, " *")
 					comment = strings.TrimRight(comment, " *")
 				}
