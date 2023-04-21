@@ -21,6 +21,7 @@ var negativeFullMarshal string
 //go:embed testdata/negative_unmarshal_one.txt
 var negativeUnmarshalOne string
 
+// TestReader_ReadAll - tests cases input reader.
 func TestReader_ReadAll(t *testing.T) {
 	t.Parallel()
 	testCases := []struct {
@@ -203,8 +204,6 @@ func TestReader_ReadAll(t *testing.T) {
 						t.Errorf("mismatch (-want, +got):\n%s", diff)
 					}
 				}
-
-				_ = all
 			},
 		)
 	}
