@@ -6,6 +6,7 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
@@ -14,8 +15,18 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+const defaultTestCaseDescriptionTmpl = "Test cases for %s"
+
+var availableCommentRegexp *regexp.Regexp
+
+func init() {
+	// availableCommentRegexp = regexp.MustCompile(`[^a-zA-Z0-9а-яА-Я\-\\.,!?;()#$%^&* ]+`)
+	availableCommentRegexp = regexp.MustCompile(`(\/\*([\s\S]*?)\*\/|\/\/(.*)$)`)
+}
+
 type GoTestMethod struct {
 	TestName     string
+	TestComment  string
 	PackageName  string
 	FileName     string
 	TestFileLine int
@@ -111,7 +122,7 @@ func parse(pth string, pkg golist.Package) ([]GoTestMethod, error) {
 	fileSet := token.NewFileSet()
 
 	// Use the parser.ParseFile method to parse the test file.
-	f, err := parser.ParseFile(fileSet, pth, nil, 0)
+	f, err := parser.ParseFile(fileSet, pth, nil, parser.ParseComments)
 	if err != nil {
 		return nil, fmt.Errorf("Parser.ParseFile: %w", err)
 	}
@@ -133,9 +144,20 @@ func parse(pth string, pkg golist.Package) ([]GoTestMethod, error) {
 				lineNum, _ := strconv.Atoi(fileDetails[1])
 				colNum, _ := strconv.Atoi(fileDetails[2])
 
+				comment := fmt.Sprintf(defaultTestCaseDescriptionTmpl, x.Name.Name)
+				if doc := x.Doc; doc != nil {
+					// Replace all CRLF to whitespace
+					comment = strings.ReplaceAll(doc.Text(), "\n", "")
+					// Remove special chars
+					comment = availableCommentRegexp.ReplaceAllString(comment, "")
+					comment = strings.TrimLeft(comment, " *")
+					comment = strings.TrimRight(comment, " *")
+				}
+
 				files = append(
 					files, GoTestMethod{
 						TestName:     x.Name.Name,
+						TestComment:  comment,
 						PackageName:  pkg.ImportPath,
 						FileName:     fileDetails[0],
 						TestFileLine: lineNum,
