@@ -19,6 +19,7 @@ type Parser struct {
 	PackageRetriever
 }
 
+// ParseFiles retrieves Go packages using the PackageRetriever and parses their test files.
 func (p *Parser) ParseFiles(ctx context.Context) ([]GoTestMethod, error) {
 	packages, err := p.Retrieve(ctx)
 	if err != nil {
