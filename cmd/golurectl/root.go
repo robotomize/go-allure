@@ -173,18 +173,16 @@ var rootCmd = &cobra.Command{
 		}
 
 		// Set options for the exporter writer
-		var outOpts []exporter.WriterOption
+		var wOpts []exporter.WriterOption
 		if outputDirFlag != "" {
-			outOpts = append(outOpts, exporter.WithOutputPth(outputDirFlag))
+			wOpts = append(wOpts, exporter.WriteToFile(outputDirFlag))
 		}
 
-		// Create the writer with the options
-		outputWriter := io.Writer(os.Stdout)
-		if silentOutput {
-			outputWriter = io.Discard
+		if !silentOutput {
+			wOpts = append(wOpts, exporter.WriteToStdout())
 		}
 
-		writer := exporter.NewWriter(outputWriter, outOpts...)
+		writer := exporter.NewWriter(wOpts...)
 
 		// Write the report files
 		if len(outputDirFlag) > 0 && len(allureReport.Tests) > 0 {

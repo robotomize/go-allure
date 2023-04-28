@@ -18,14 +18,20 @@ type Writer interface {
 
 type WriterOption func(*writer)
 
-func WithOutputPth(pth string) WriterOption {
+func WriteToFile(pth string) WriterOption {
 	return func(w *writer) {
 		w.pth = pth
 	}
 }
 
-func NewWriter(w1 io.Writer, opts ...WriterOption) Writer {
-	w := writer{w: w1}
+func WriteToStdout() WriterOption {
+	return func(w *writer) {
+		w.w = os.Stdout
+	}
+}
+
+func NewWriter(opts ...WriterOption) Writer {
+	w := writer{w: io.Discard}
 	for _, o := range opts {
 		o(&w)
 	}
@@ -50,7 +56,7 @@ func (o *writer) WriteReport(ctx context.Context, tests []allure.Test) error {
 	}
 
 	// Create the necessary directories in the file system if they don't exist.
-	if err := o.mkdir(); err != nil {
+	if err := mkdir(o.pth); err != nil {
 		return err
 	}
 
@@ -76,8 +82,8 @@ func (o *writer) WriteAttachments(ctx context.Context, attachments []Attachment)
 	}
 
 	// Create the directory if it does not exist.
-	if err := o.mkdir(); err != nil {
-		return err
+	if err := mkdir(o.pth); err != nil {
+		return fmt.Errorf("mkdir: %w", err)
 	}
 
 	// Write each attachment file to disk.
@@ -137,19 +143,6 @@ func (o *writer) write(tc allure.Test) error {
 	// Encode the test result in JSON format and write it to the console and file output.
 	if err := json.NewEncoder(w).Encode(tc); err != nil {
 		return fmt.Errorf("json.NewEncoder.Encode: %w", err)
-	}
-
-	return nil
-}
-
-// mkdir checks if the provided path exists and creates it if it does not.
-func (o *writer) mkdir() error {
-	// Check if the directory already exists.
-	if _, err := os.Stat(o.pth); os.IsNotExist(err) {
-		// Create the directory if it does not exist.
-		if err = os.MkdirAll(o.pth, os.ModePerm); err != nil {
-			return fmt.Errorf("os.MkdirAll: %w", err)
-		}
 	}
 
 	return nil
