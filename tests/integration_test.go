@@ -8,11 +8,11 @@ import (
 	"context"
 	"embed"
 	_ "embed"
-	"io"
 	"os"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/robotomize/go-allure/internal/fs"
 
 	"github.com/robotomize/go-allure/internal/golist"
 	"github.com/robotomize/go-allure/internal/gotest"
@@ -44,8 +44,8 @@ func TestExport(t *testing.T) {
 	}
 
 	r := gotest.NewReader(bytes.NewReader(testSet))
-	w := exporter.NewWriter(io.Discard)
-	p := parser.New(golist.NewRetriever(os.DirFS(pwd), "fixtures"))
+	w := exporter.NewWriter()
+	p := parser.New(golist.NewRetriever(fs.New(pwd), "fixtures"))
 
 	e := exporter.New(p, r)
 	if err = e.Read(ctx); err != nil {

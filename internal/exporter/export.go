@@ -1,7 +1,6 @@
 package exporter
 
 import (
-	"bytes"
 	"context"
 	"crypto/md5"
 	"encoding/hex"
@@ -88,6 +87,7 @@ func New(fileParser FileParser, reader Reader, opts ...Option) AllureExporter {
 
 type exporter struct {
 	opts        Options
+	originLog   io.Reader
 	readErr     error
 	fileParser  FileParser
 	stdinReader Reader
@@ -102,32 +102,32 @@ func (e *exporter) Read(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("go parser ParseFiles: %w", err)
 	}
+
 	for _, file := range files {
 		key := file.PackageName + file.TestName
 		e.files[key] = file
 	}
 
 	// Read the test output from stdin using the stdin reader and save the results in the exporter.
-	all, err := e.stdinReader.ReadAll(ctx)
+	set, err := e.stdinReader.ReadAll(ctx)
 	if err != nil {
 		return fmt.Errorf("stdin reader ReadAll: %w", err)
 	}
-	e.tests = make([]gotest.NestedTest, len(all.Tests))
-	copy(e.tests, all.Tests)
-	e.readErr = all.Err
+
+	e.tests = make([]gotest.NestedTest, len(set.Tests))
+	copy(e.tests, set.Tests)
+
+	e.readErr = set.Err
+	e.originLog = set.OriginLog
 
 	return nil
 }
 
 // Export converts Go test results to Allure test report format.
 func (e *exporter) Export() (Report, error) {
-	// Create a buffer for storing Go test output based on a fixed size.
-	const goOutputSize = 4096
-	goOutputBuf := bytes.NewBuffer(make([]byte, 0, goOutputSize))
-
 	result := Report{
 		Err:       e.readErr,
-		OutputLog: goOutputBuf,
+		OutputLog: e.originLog,
 	}
 
 	attachmentCh := make(chan Attachment)
@@ -212,9 +212,6 @@ func (e *exporter) Export() (Report, error) {
 		// Add test steps to the Allure test case and add it to the Report.
 		e.addStep(&allureTestCase, testCase, attachmentCh)
 		result.Tests = append(result.Tests, allureTestCase)
-
-		// Write the Go test log to the output buffer.
-		goOutputBuf.Write(testCase.Log)
 	}
 
 	close(attachmentCh)

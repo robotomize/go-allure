@@ -19,8 +19,9 @@ type NestedTest struct {
 }
 
 type Set struct {
-	Err   error
-	Tests []NestedTest
+	Err       error
+	Tests     []NestedTest
+	OriginLog io.Reader
 }
 
 func NewReader(r io.Reader) *Reader {
@@ -36,6 +37,7 @@ func (r *Reader) ReadAll(ctx context.Context) (Set, error) {
 	var errs []error
 
 	prefix := &prefixNode{}
+	pkgsOutput := make(map[string][]string)
 
 	// Iterate through each line in the scanner.
 	// If the context is done, return an empty Set and the context error.
@@ -68,6 +70,16 @@ func (r *Reader) ReadAll(ctx context.Context) (Set, error) {
 			}
 
 			tc.Update(row)
+			continue
+		}
+
+		if pkg := row.Package; len(pkg) > 0 {
+			if row.Output == "" {
+				pkgsOutput[pkg] = append(pkgsOutput[pkg], "\n")
+				continue
+			}
+
+			pkgsOutput[pkg] = append(pkgsOutput[pkg], row.Output)
 		}
 	}
 
@@ -85,6 +97,37 @@ func (r *Reader) ReadAll(ctx context.Context) (Set, error) {
 		}
 	}
 
+	outputWriters := make(map[string]*bytes.Buffer)
+
+	result.OriginLog = bytes.NewBuffer(make([]byte, 0))
+	for _, tc := range testCases {
+		w, ok := outputWriters[tc.Value.Package]
+		if !ok {
+			w = bytes.NewBuffer(make([]byte, 0))
+			outputWriters[tc.Value.Package] = w
+		}
+		w.Write(tc.Log)
+	}
+
+	for name, lines := range pkgsOutput {
+		w, ok := outputWriters[name]
+		if !ok {
+			w = bytes.NewBuffer(make([]byte, 0))
+		}
+
+		for _, line := range lines {
+			w.WriteString(line)
+		}
+	}
+
+	outputReaders := make([]io.Reader, 0)
+	for _, w := range outputWriters {
+		outputReaders = append(outputReaders, w)
+	}
+
+	outputReader := io.MultiReader(outputReaders...)
+
+	result.OriginLog = outputReader
 	result.Tests = make([]NestedTest, len(testCases))
 	copy(result.Tests, testCases)
 
@@ -145,12 +188,6 @@ func (r *Reader) walk(node *prefixNode, prefix *prefixLog) (NestedTest, bool) {
 	if _, err := reader.Seek(int64(prefix.pos), io.SeekCurrent); err != nil {
 		return NestedTest{}, false
 	}
-
-	// Read all the bytes from the reader and convert it into a string slice.
-	// all, err := io.ReadAll(reader)
-	// if err != nil {
-	// 	return NestedTest{}, false
-	// }
 
 	// Read all the bytes from the reader and convert it into a string slice.
 	stringSlice := make([]string, 0)
