@@ -42,13 +42,13 @@ Flags:
       --allure-layers string   add allure layers to all tests: --allure-layers UNIT,FUNCTIONAL
       --allure-suite string    add allure suite to all tests: --allure-suite MyFirstSuite
       --allure-tags string     add allure tags to all tests: --allure-tags UNIT,ACCEPTANCE
-  -a, --attachment-force       add a log of pass and failed tests to the attachments
+  -a, --attachment-force       create attachments for passed tests
   -e, --forward-exit           forward the origin go test exit code
   -l, --forward-log            output the origin go test
       --gotags string          pass custom build tags: --gotags integration,fixture,linux
   -h, --help                   help for golurectl
   -o, --output string          output path to allure reports: -o <report-path>
-  -s, --silent                 silent allure report output
+  -s, --silent                 silent allure report output(JSON)
   -v, --verbose                verbose
 
 Use "golurectl [command] --help" for more information about a command.
@@ -57,7 +57,7 @@ Use "golurectl [command] --help" for more information about a command.
 Example output to stdout
 
 ```shell
-go test -json./...|golurectl
+go test -json ./...|golurectl
 ```
 
 Example output to reports= dir
@@ -69,7 +69,7 @@ go test -json ./...|golurectl -o reports-dir
 Example output to report dir with flags
 
 ```shell
-go test -json -cover  ./...|golurectl -l -e -o reports-dir --gotags integration --allure-suite MySuite --allure-labels epic:my_epic,custom:value --allure-tags UNIT,GO-ALLURE --allure-layers UNIT
+go test -json -cover  ./...|golurectl -l -e -o -s reports-dir --gotags integration --allure-suite MySuite --allure-labels epic:my_epic,custom:value --allure-tags UNIT,GO-ALLURE --allure-layers UNIT
 ```
 
 ## Examples
