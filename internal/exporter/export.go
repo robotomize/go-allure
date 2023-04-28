@@ -1,13 +1,13 @@
 package exporter
 
 import (
+	"bytes"
 	"context"
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
 	"io"
 	"os"
-	"strings"
 	"sync"
 	"time"
 
@@ -16,7 +16,6 @@ import (
 	"github.com/robotomize/go-allure/internal/allure"
 	"github.com/robotomize/go-allure/internal/gotest"
 	"github.com/robotomize/go-allure/internal/parser"
-	"github.com/robotomize/go-allure/internal/slice"
 )
 
 var hostname string
@@ -156,7 +155,7 @@ func (e *exporter) Export() (Report, error) {
 
 		// Generate a unique ID for the Allure test case and determine its status based on the Go test status.
 		id := uuid.New().String()
-		status := e.convertStatus(goTest)
+		status := e.convertStatus(goTest, testCase.Log)
 
 		allureTestCase := allure.Test{
 			UUID:        id,
@@ -232,8 +231,16 @@ func (e *exporter) addStep(allureObj any, testCase gotest.NestedTest, ch chan<- 
 
 		// Get the test case name and status and create an Allure step with it.
 		name := goTest.Name
-		status := e.convertStatus(goTest)
-
+		status := e.convertStatus(goTest, tc.Log)
+		if status == allure.StatusBroken {
+			switch obj := allureObj.(type) {
+			case *allure.Test:
+				obj.Status = status
+			case *allure.Step:
+				obj.Status = status
+			default:
+			}
+		}
 		step := allure.Step{
 			Name:        name,
 			Status:      status,
@@ -315,20 +322,17 @@ func (e *exporter) defaultLabels(goTest gotest.Test, allureTest *allure.Test) {
 	allureTest.Labels = append(allureTest.Labels, e.opts.allureLabels...)
 }
 
-func (*exporter) convertStatus(goTest gotest.Test) string {
+func (*exporter) convertStatus(goTest gotest.Test, log []byte) string {
 	var status string
 	switch goTest.Status {
 	case gotest.ActionSkip:
 		status = allure.StatusSkip
 	case gotest.ActionFail:
-		if _, ok := slice.Find(
-			goTest.Output, func(v string) bool {
-				return strings.Contains(v, "panic")
-			},
-		); ok {
+		if bytes.Contains(log, []byte("panic")) {
 			status = allure.StatusBroken
 			break
 		}
+
 		status = allure.StatusFail
 	case gotest.ActionPass:
 		status = allure.StatusPass
