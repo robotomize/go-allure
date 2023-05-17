@@ -24,14 +24,14 @@ func WriteToFile(pth string) WriterOption {
 	}
 }
 
-func WriteToStdout() WriterOption {
+func WriteReportTo(writers ...io.Writer) WriterOption {
 	return func(w *writer) {
-		w.w = os.Stdout
+		w.reportWriters = append(w.reportWriters, writers...)
 	}
 }
 
 func NewWriter(opts ...WriterOption) Writer {
-	w := writer{w: io.Discard}
+	w := writer{reportWriters: []io.Writer{io.Discard}}
 	for _, o := range opts {
 		o(&w)
 	}
@@ -40,30 +40,28 @@ func NewWriter(opts ...WriterOption) Writer {
 }
 
 type writer struct {
-	pth string
-	w   io.Writer
+	pth           string
+	reportWriters []io.Writer
 }
 
-// WriteReport - write allure report to the given path.
+// WriteReport - writeReport allure report to the given path.
 func (o *writer) WriteReport(ctx context.Context, tests []allure.Test) error {
 	// Check if the context is done to return early.
 	if err := ctx.Err(); err != nil {
 		return err
 	}
 
-	if o.pth == "" {
-		return nil
-	}
-
 	// Create the necessary directories in the file system if they don't exist.
-	if err := mkdir(o.pth); err != nil {
-		return err
+	if len(o.pth) > 0 {
+		if err := mkdir(o.pth); err != nil {
+			return err
+		}
 	}
 
-	// Loop through the Test objects and write each one to a separate text file.
+	// Loop through the Test objects and writeReport each one to a separate text file.
 	for _, tc := range tests {
-		if err := o.write(tc); err != nil {
-			return fmt.Errorf("write test: %w", err)
+		if err := o.writeReport(tc); err != nil {
+			return fmt.Errorf("writeReport test: %w", err)
 		}
 	}
 
@@ -123,26 +121,36 @@ func (o *writer) writeAttachmentFile(attachment Attachment) error {
 	return nil
 }
 
-// write writes the test result to the specified path, if provided.
-func (o *writer) write(tc allure.Test) error {
+// writeReport writes the test result to the specified path, if provided.
+func (o *writer) writeReport(tc allure.Test) (err error) {
 	// Use the console output and file output writers, if path is given.
-	writers := []io.Writer{o.w}
+	writers := make([]io.Writer, len(o.reportWriters))
+	copy(writers, o.reportWriters)
+
 	if o.pth != "" {
-		// Open file for write and 0644 permissions
+		// Open file for writeReport and 0644 permissions
 		pth := filepath.Join(o.pth, fmt.Sprintf("%s-result.json", tc.UUID))
-		file, err := os.OpenFile(pth, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o644)
-		if err != nil {
-			return fmt.Errorf("os.OpenFile: %w", err)
+		file, openErr := os.OpenFile(pth, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o644)
+		if openErr != nil {
+			return fmt.Errorf("os.OpenFile: %w", openErr)
 		}
-		defer file.Close()
+
+		defer func() {
+			if syncErr := file.Sync(); syncErr != nil {
+				err = fmt.Errorf("file Sync: %w", syncErr)
+			}
+
+			_ = file.Close()
+		}()
+
 		writers = append(writers, file)
 	}
 
 	w := io.MultiWriter(writers...)
 
-	// Encode the test result in JSON format and write it to the console and file output.
-	if err := json.NewEncoder(w).Encode(tc); err != nil {
-		return fmt.Errorf("json.NewEncoder.Encode: %w", err)
+	// Encode the test result in JSON format and writeReport it to the console and file output.
+	if encErr := json.NewEncoder(w).Encode(tc); encErr != nil {
+		return fmt.Errorf("json.NewEncoder.Encode: %w", encErr)
 	}
 
 	return nil

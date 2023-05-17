@@ -179,18 +179,15 @@ var rootCmd = &cobra.Command{
 		}
 
 		if !silentOutput {
-			wOpts = append(wOpts, exporter.WriteToStdout())
+			wOpts = append(wOpts, exporter.WriteReportTo(os.Stdout))
 		}
 
 		writer := exporter.NewWriter(wOpts...)
 
 		// Write the report files
-		if len(outputDirFlag) > 0 && len(allureReport.Tests) > 0 {
-			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Write report files\n")
-
-			if err := writer.WriteReport(ctx, allureReport.Tests); err != nil {
-				return fmt.Errorf("exporter.NewWriter WriteReport: %w", err)
-			}
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Write report files\n")
+		if err := writer.WriteReport(ctx, allureReport.Tests); err != nil {
+			return fmt.Errorf("exporter.NewWriter WriteReport: %w", err)
 		}
 
 		// Write the attachments
