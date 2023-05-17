@@ -143,7 +143,7 @@ func (o *writer) writeReport(tc allure.Test) (err error) {
 			_ = file.Close()
 		}()
 
-		writers = append(writers, file)
+		writers = append(writers, file) // nolint
 	}
 
 	w := io.MultiWriter(writers...)

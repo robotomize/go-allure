@@ -9,6 +9,10 @@
 
 A command line utility for converting the output of Go tests into [allure reports](https://github.com/allure-framework).
 
+## Demo
+
+![demo](https://github.com/robotomize/go-allure/raw/main/_media/example_2.gif)
+
 ## Install
 
 ### Go
@@ -54,242 +58,19 @@ Flags:
 Use "golurectl [command] --help" for more information about a command.
 ```
 
-Example output to stdout
+## Getting started
+
+To quickly see how golurectl works, you can use the following guide
 
 ```shell
-go test -json ./...|golurectl
+go install github.com/robotomize/go-allure/cmd/golurectl@latest
+cd <go-project-dir>
+go test -json -cover ./...|golurectl -l -e
 ```
 
-Example output to reports= dir
-
+A more complex example with the generation of report files and attachments
 ```shell
-go test -json ./...|golurectl -o reports-dir
+go test -json -cover ./...|golurectl -l -e -s -a -o ~/Downloads/reports --allure-suite MySuite --allure-labels epic:my_epic,custom:value --allure-tags UNIT,GO-ALLURE --allure-layers UNIT
 ```
-
-Example output to report dir with flags
-
-```shell
-go test -json -cover  ./...|golurectl -l -e -o -s reports-dir --gotags integration --allure-suite MySuite --allure-labels epic:my_epic,custom:value --allure-tags UNIT,GO-ALLURE --allure-layers UNIT
-```
-
-## Examples
-
-We have the following set of tests along with subtests
-
-```go
-//go:build !all && fixtures
-// +build !all,fixtures
-
-package tests
-
-import (
-	"reflect"
-	"testing"
-)
-
-func TestMarshal(t *testing.T) {
-	t.Parallel()
-
-	testCases := []struct {
-		name     string
-		input    simpleStruct
-		expected int
-	}{
-		{
-			name: "test_ok",
-			input: simpleStruct{
-				Name:     "hello",
-				LastName: "world",
-			},
-			expected: 4 + len("hello") + len("world") + 4,
-		},
-	}
-
-	for _, tc := range testCases {
-		tc := tc
-		t.Run(
-			tc.name, func(t *testing.T) {
-				t.Parallel()
-				result, _ := Marshal(tc.input)
-				if len(result) != tc.expected {
-					t.Errorf("got: %d, want: %d", len(result), tc.expected)
-				}
-			}
-		)
-	}
-}
-
-func TestUnmarshal(t *testing.T) {
-	t.Parallel()
-
-	testCases := []struct {
-		name     string
-		input    simpleStruct
-		expected int
-	}{
-		{
-			name: "test_ok",
-			input: simpleStruct{
-				Name:     "hello",
-				LastName: "world",
-			},
-			expected: 4 + len("hello") + len("world") + 4,
-		},
-		{
-			name: "test_failed",
-			input: simpleStruct{
-				Name:     "hello",
-				LastName: "world",
-			},
-			expected: 4 + len("hello") + len("world") + 6,
-		},
-	}
-
-	for _, tc := range testCases {
-		tc := tc
-		t.Run(
-			tc.name, func(t *testing.T) {
-				t.Parallel()
-				result, _ := Marshal(tc.input)
-				if len(result) != tc.expected {
-					t.Errorf("got: %d, want: %d", len(result), tc.expected)
-				}
-				var sStruct simpleStruct
-				if err := Unmarshal(result, &sStruct); err != nil {
-					t.Errorf("Unmarshal: %v", err)
-				}
-				if !reflect.DeepEqual(sStruct, tc.input) {
-					t.Errorf("got: %v, want: %v", false, true)
-				}
-			}
-		)
-	}
-}
-
-
-```
-
-We can feed the go test output into golurectl.
-golurectl will display the results of the go test and generate a report in allure.
-
-```shell
-go test -tags=fixtures -race -json ./...|golurectl --gotags fixtures
-```
-
-```shell
-{
-  "uuid": "96b84a3b-2aaa-4b75-82f1-63ff3cb135db",
-  "testCaseId": "979afbf07b7b262f3bfb077b2f06f8de",
-  "historyId": "979afbf07b7b262f3bfb077b2f06f8de",
-  "name": "TestMarshal",
-  "description": "",
-  "status": "passed",
-  "stage": "finished",
-  "steps": [
-    {
-      "name": "TestMarshal/test_ok",
-      "status": "passed",
-      "stage": "finished",
-      "steps": [],
-      "attachments": [],
-      "parameters": [],
-      "start": 1676382158,
-      "stop": 1676382158
-    }
-  ],
-  "start": 1676382158,
-  "stop": 1676382158,
-  "fullName": "github.com/robotomize/go-allure/tests/encoding_binary_test.go:TestMarshal",
-  "parameters": [],
-  "labels": [
-    {
-      "name": "package",
-      "value": "github.com/robotomize/go-allure/tests"
-    },
-    {
-      "name": "testClass",
-      "value": "github.com/robotomize/go-allure/tests/encoding_binary_test.go"
-    },
-    {
-      "name": "testMethod",
-      "value": "TestMarshal"
-    },
-    {
-      "name": "language",
-      "value": "golang"
-    },
-    {
-      "name": "go-version",
-      "value": "1.19"
-    },
-    {
-      "name": "host",
-      "value": "popos"
-    }
-  ],
-  "attachments": []
-}
-
-{
-  "uuid": "587d51b4-3947-46cf-8d6a-3ea0376dcdd8",
-  "testCaseId": "d9e4658d46475d46c45536dc9cc4bdb7",
-  "historyId": "d9e4658d46475d46c45536dc9cc4bdb7",
-  "name": "TestUnmarshal",
-  "description": "",
-  "status": "failed",
-  "stage": "finished",
-  "steps": [
-    {
-      "name": "TestUnmarshal/test_ok",
-      "status": "passed",
-      "stage": "finished",
-      "steps": [],
-      "attachments": [],
-      "parameters": [],
-      "start": 1676382158,
-      "stop": 1676382158
-    },
-    {
-      "name": "TestUnmarshal/test_failed",
-      "status": "failed",
-      "stage": "finished",
-      "steps": [],
-      "attachments": [],
-      "parameters": [],
-      "start": 1676382158,
-      "stop": 1676382158
-    }
-  ],
-  "start": 1676382158,
-  "stop": 1676382158,
-  "fullName": "github.com/robotomize/go-allure/tests/encoding_binary_test.go:TestUnmarshal",
-  "parameters": [],
-  "labels": [
-    {
-      "name": "package",
-      "value": "github.com/robotomize/go-allure/tests"
-    },
-    {
-      "name": "testClass",
-      "value": "github.com/robotomize/go-allure/tests/encoding_binary_test.go"
-    },
-    {
-      "name": "testMethod",
-      "value": "TestUnmarshal"
-    },
-    {
-      "name": "language",
-      "value": "golang"
-    },
-    {
-      "name": "go-version",
-      "value": "1.19"
-    },
-    {
-      "name": "host",
-      "value": "popos"
-    }
-  ],
-  "attachments": []
-}
-```
+### Demo with reports
+![demo](https://github.com/robotomize/go-allure/raw/main/_media/getting_started.gif)
