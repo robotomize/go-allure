@@ -123,10 +123,6 @@ func (o *writer) writeAttachmentFile(attachment Attachment) error {
 
 // writeReport writes the test result to the specified path, if provided.
 func (o *writer) writeReport(tc allure.Test) (err error) {
-	// Use the console output and file output writers, if path is given.
-	writers := make([]io.Writer, len(o.reportWriters))
-	copy(writers, o.reportWriters)
-
 	if o.pth != "" {
 		// Open file for writeReport and 0644 permissions
 		pth := filepath.Join(o.pth, fmt.Sprintf("%s-result.json", tc.UUID))
@@ -143,13 +139,17 @@ func (o *writer) writeReport(tc allure.Test) (err error) {
 			_ = file.Close()
 		}()
 
-		writers = append(writers, file) // nolint
+		if encErr := json.NewEncoder(file).Encode(tc); encErr != nil {
+			return fmt.Errorf("json.NewEncoder.Encode: %w", encErr)
+		}
 	}
 
-	w := io.MultiWriter(writers...)
+	w := io.MultiWriter(o.reportWriters...)
 
 	// Encode the test result in JSON format and writeReport it to the console and file output.
-	if encErr := json.NewEncoder(w).Encode(tc); encErr != nil {
+	encoder := json.NewEncoder(w)
+	encoder.SetIndent("", "    ")
+	if encErr := encoder.Encode(tc); encErr != nil {
 		return fmt.Errorf("json.NewEncoder.Encode: %w", encErr)
 	}
 
