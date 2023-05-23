@@ -10,7 +10,7 @@ jobs:
     name: prepare
     steps:
       - name: Set up Go 1.x
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v4
         with:
           go-version: ^1.20
 
@@ -33,7 +33,7 @@ jobs:
     name: unit
     steps:
       - name: Set up Go 1.x
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v4
         with:
           go-version: ^1.20
 
@@ -63,7 +63,7 @@ jobs:
     name: lint
     steps:
       - name: Set up Go 1.x
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v4
         with:
           go-version: ^1.20
 
@@ -96,7 +96,7 @@ jobs:
     name: release
     steps:
       - name: Set up Go 1.x
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v4
         with:
           go-version: ^1.20
 
@@ -134,7 +134,7 @@ jobs:
     name: docker
     steps:
       - name: Set up Go 1.x
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v4
         with:
           go-version: ^1.20
 
