@@ -9,6 +9,7 @@ import (
 	"embed"
 	_ "embed"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -38,14 +39,19 @@ func TestExport(t *testing.T) {
 		t.Fatalf("os.Getwd: %v", err)
 	}
 
-	testSet, err := ffs.ReadFile("testdata/sample_fixture.txt")
+	testSet, err := ffs.ReadFile("testdata/current_snapshot.txt")
 	if err != nil {
 		t.Fatalf("fs ReadFile: %v", err)
 	}
 
+	absPth, err := filepath.Abs(filepath.Join(pwd, "../"))
+	if err != nil {
+		t.Fatalf("filepath.Abs: %v", err)
+	}
+
 	r := gotest.NewReader(bytes.NewReader(testSet))
 	w := exporter.NewWriter()
-	p := parser.New(golist.NewRetriever(fs.New(pwd), "fixtures"))
+	p := parser.New(golist.NewRetriever(fs.New(absPth)))
 
 	e := exporter.New(p, r)
 	if err = e.Read(ctx); err != nil {

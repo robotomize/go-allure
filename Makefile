@@ -2,8 +2,8 @@ BUILD_TAG=$(shell git describe --tags --abbrev=0)
 BUILD_NAME?=golurectl
 
 .PHONY: create-fixtures
-test-fixtures:
-	go test -tags=fixtures -race -json ./... > ./tests/fixtures/test_sample.txt
+create-fixtures:
+	go test -race -json ./... > ./tests/testdata/current_snapshot.txt
 
 .PHONY: integration
 test-integration:

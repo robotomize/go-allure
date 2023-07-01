@@ -178,7 +178,7 @@ func goList(ctx context.Context, dir string, args []string) (io.Reader, error) {
 
 	cmd.Stdin = strings.NewReader("")
 	if err := cmd.Run(); err != nil {
-		return nil, fmt.Errorf("command Run go %s: %w", strings.Join(args, " "), err)
+		return nil, fmt.Errorf("command Run go list %s: %w", strings.Join(args, " "), err)
 	}
 
 	b1 := bytes.NewBuffer(b.Bytes())
