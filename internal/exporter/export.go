@@ -171,16 +171,16 @@ func (e *exporter) Export() (Report, error) {
 		// Add default labels to the Allure test case
 		e.defaultLabels(goTest, &allureTestCase)
 
-		// Calculate test case ID as test case full name
-		testCaseID := hasher([]byte(allureTestCase.FullName))
-		// Generate history ID as hash of test case ID
-		historyID := hasher(testCaseID)
-
 		goTestFile, ok := e.files[goTest.Package+goTest.Name]
 		if ok {
 			allureTestCase.Description = goTestFile.TestComment
 			allureTestCase.FullName = fmt.Sprintf("%s/%s:%s", goTestFile.PackageName, goTestFile.FileName, goTest.Name)
 		}
+
+		// Calculate test case ID as test case full name
+		testCaseID := hasher([]byte(allureTestCase.FullName))
+		// Generate history ID as hash of test case ID
+		historyID := hasher(testCaseID)
 
 		allureTestCase.TestCaseID = hex.EncodeToString(testCaseID)
 		allureTestCase.HistoryID = hex.EncodeToString(historyID)
