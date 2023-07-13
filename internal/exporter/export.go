@@ -192,7 +192,7 @@ func (e *exporter) Export() (Report, error) {
 		hasAttachment := e.opts.forceAttachment || goTest.Status == gotest.ActionPanic || goTest.Status == gotest.ActionFail
 		if hasAttachment {
 			source := fmt.Sprintf("%s-attachment.txt", uuid.New().String())
-			mime := "plain/text"
+			mime := "application/json"
 			attachmentCh <- Attachment{
 				Name:   goTest.Name,
 				Mime:   mime,
@@ -203,7 +203,7 @@ func (e *exporter) Export() (Report, error) {
 				allureTestCase.Attachments, allure.Attachment{
 					Name:   goTest.Name,
 					Source: source,
-					Type:   "plain/text",
+					Type:   "application/json",
 				},
 			)
 		}
@@ -257,7 +257,7 @@ func (e *exporter) addStep(allureObj any, testCase gotest.NestedTest, ch chan<- 
 		hasAttachment := e.opts.forceAttachment || goTest.Status == gotest.ActionPanic || goTest.Status == gotest.ActionFail
 		if hasAttachment {
 			source := fmt.Sprintf("%s-attachment.txt", uuid.New().String())
-			mime := "plain/text"
+			mime := "application/json"
 
 			// It also saves attachments from the Go test cases if they are present
 			ch <- Attachment{
@@ -271,7 +271,7 @@ func (e *exporter) addStep(allureObj any, testCase gotest.NestedTest, ch chan<- 
 				step.Attachments, allure.Attachment{
 					Name:   goTest.Name,
 					Source: source,
-					Type:   "plain/text",
+					Type:   "application/json",
 				},
 			)
 		}
