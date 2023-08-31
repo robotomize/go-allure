@@ -65,7 +65,7 @@ func (t *prefixNode) isChildExist(obj *Test, key string) bool {
 		}
 
 		// If the key is a subtest of a child's key, create a new child node that combines the two and add it to the Children slice.
-		if strings.HasPrefix(n.Key, key) {
+		if strings.HasPrefix(n.Key, key) && strings.Count(key, "/") > strings.Count(n.Key, "/") {
 			if curr != nil {
 				curr.Children = append(curr.Children, n)
 				t.Children = append(t.Children[:idx], t.Children[idx+1:]...)

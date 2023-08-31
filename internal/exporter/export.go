@@ -156,6 +156,9 @@ func (e *exporter) Export() (Report, error) {
 		// Generate a unique ID for the Allure test case and determine its status based on the Go test status.
 		id := uuid.New().String()
 		status := e.convertStatus(goTest, testCase.Log)
+		if len(status) == 0 {
+			continue
+		}
 
 		allureTestCase := allure.Test{
 			UUID:        id,
@@ -232,6 +235,11 @@ func (e *exporter) addStep(allureObj any, testCase gotest.NestedTest, ch chan<- 
 		// Get the test case name and status and create an Allure step with it.
 		name := goTest.Name
 		status := e.convertStatus(goTest, tc.Log)
+		if len(status) == 0 {
+			// @TODO verbose this
+			continue
+		}
+
 		if status == allure.StatusBroken {
 			switch obj := allureObj.(type) {
 			case *allure.Test:
@@ -337,7 +345,6 @@ func (*exporter) convertStatus(goTest gotest.Test, log []byte) string {
 	case gotest.ActionPass:
 		status = allure.StatusPass
 	default:
-		status = allure.StatusBroken
 	}
 
 	return status
