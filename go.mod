@@ -6,7 +6,7 @@ require (
 	github.com/google/go-cmp v0.6.0
 	github.com/google/uuid v1.5.0
 	github.com/spf13/cobra v1.8.0
-	golang.org/x/sync v0.5.0
+	golang.org/x/sync v0.6.0
 )
 
 require (
