@@ -80,7 +80,7 @@ jobs:
             ${{ runner.os }}-go-test-
             ${{ runner.os }}-go-
       - name: go-lint
-        uses: golangci/golangci-lint-action@v4
+        uses: golangci/golangci-lint-action@v5
         with:
           version: 'v1.51.1'
           skip-cache: true
